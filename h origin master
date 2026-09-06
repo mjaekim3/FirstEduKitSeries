@@ -1,0 +1,35 @@
+[33m104ad2261[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m Restructure: Next.js, API, Streamlit folders
+[33m8417d8473[m[33m ([m[1;31morigin/main[m[33m)[m Update 1_Weekly_Lesson_Plan_Export.py
+[33m8a3fc1da2[m Update 1_Weekly_Lesson_Plan_Export.py
+[33mb298dd0ec[m Update 1_Weekly_Lesson_Plan_Export.py
+[33m95db7bd90[m Update 1_Weekly_Lesson_Plan_Export.py
+[33m8cb5fefc8[m Modify crop rectangle for PDF export
+[33m07d058cf0[m Update 1_Weekly_Lesson_Plan_Export.py
+[33ma4d88d5df[m Update 1_Weekly_Lesson_Plan_Export.py
+[33mb61458d7f[m Update 1_Weekly_Lesson_Plan_Export.py
+[33m4cadb40fc[m Rename FirstEduKitSeries to FirstEduKitSeries.py
+[33m0ad6e14f8[m Update title and caption in FirstEduKitSeries
+[33m6820611d0[m Add FirstEduKitSeries directory with app.py
+[33mfc93e0a61[m Unify branding to FirstEduKit Series, rename main app file
+[33me4ea2f1ef[m Adjust bottom crop to 100pt
+[33m7a5a7a5c0[m Adjust bottom crop to 120pt
+[33mb220cc2bb[m Adjust bottom crop to 150pt
+[33mdf6c9d757[m Rename to First-EduKit Series, add MJ@HIFS credit on all pages
+[33ma38998499[m Increase bottom crop to 200pt, rename HIFS Global Academy to HIFS
+[33m3dee8903f[m Increase bottom crop to 120pt
+[33m07413252c[m Increase bottom crop to 60pt
+[33m63f268235[m Use PyMuPDF clip for uniform margins
+[33m792ebf78d[m Crop bottom margin using Pillow
+[33m68b8f89e6[m Auto fetch sheets on grade selection
+[33m19d566e5a[m Rename WLPE page to full name
+[33mc1d37e608[m Dark mode compatible card grid home
+[33m3b3f44aea[m Redesign home with module card grid
+[33mfe660a9ce[m Remove settings header from sidebar
+[33m66a9b07dd[m Set bottom margin to 0
+[33m0825f7d48[m Reduce bottom margin
+[33mb509188be[m Remove spreadsheet ID input, use hardcoded ID
+[33me3c651ced[m Add per-card preview button
+[33m58e9324d1[m Update WLPE
+[33m2f7eb9033[m Improve UI flow and fix card layout
+[33m7fcbe8a02[m Add Secrets support
+[33m619c33b44[m Initial commit

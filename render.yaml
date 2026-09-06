@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: firstedukitseries
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:server
+    envVars:
+      - key: SUPABASE_URL
+        value: https://pukympuccioavfwlqioj.supabase.co
+      - key: SUPABASE_KEY
+        sync: false

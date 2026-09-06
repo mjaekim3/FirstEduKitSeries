@@ -1,0 +1,22 @@
+# Node
+FirstEduKitSeries-Next/node_modules/
+FirstEduKitSeries-Next/.next/
+
+# Python
+FirstEduKitSeries-API/.env
+FirstEduKitSeries-Streamlit/.env
+__pycache__/
+*.pyc
+
+# 큰 파일
+*.png
+*.jpg
+KakaoTalk*
+
+# 불필요한 폴더
+Tools/
+Archive/
+Build/
+Coding Project/
+Projects_Done/
+Projects_Ongoing/
