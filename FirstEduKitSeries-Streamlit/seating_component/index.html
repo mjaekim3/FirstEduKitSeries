@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F5F4F0;font-family:'Malgun Gothic','맑은 고딕',sans-serif;overflow:hidden}
+#scene{position:relative;margin:4px auto}
+.desk{position:absolute;border-radius:5px;border:2px solid #bbb;display:flex;flex-direction:column;align-items:center;justify-content:center;user-select:none;transition:border-color .1s}
+.desk.empty{background:#ddd;cursor:default}
+.desk.occupied{cursor:grab}
+.desk.drag-over{border:3px solid #1976D2!important;background:#E3F2FD!important}
+.desk.dragging{opacity:.35}
+.desk.conflict{border-color:#D32F2F!important}
+.sn{font-size:10px;color:#555;line-height:1.2}
+.nm{font-size:12px;font-weight:bold;line-height:1.3;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.bd{font-size:9px;line-height:1.2}
+.ei{font-size:18px;color:#aaa}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<script>
+const GC=["#E3F2FD","#E8F5E9","#FFF3E0","#FCE4EC","#F3E5F5"];
+const GA=["#1976D2","#2E7D32","#E65100","#AD1457","#6A1B9A"];
+let args=null,assignment=null,dragSrcIdx=null;
+
+window.parent.postMessage({type:'streamlit:componentReady',apiVersion:1},'*');
+
+window.addEventListener('message',e=>{
+  if(e.data.type!=='streamlit:render')return;
+  const a=e.data.args;
+  if(!args||JSON.stringify(a.assignment)!==JSON.stringify(assignment))
+    assignment=[...a.assignment];
+  args=a;
+  render();
+});
+
+function sendH(){
+  const s=document.getElementById('scene');
+  window.parent.postMessage({type:'streamlit:setFrameHeight',height:s.offsetHeight+10},'*');
+}
+function sendV(){
+  window.parent.postMessage({type:'streamlit:setComponentValue',value:[...assignment]},'*');
+}
+
+function cfSids(){
+  if(!args)return new Set();
+  const idxBySid={};
+  assignment.forEach((sid,i)=>{if(sid)idxBySid[sid]=i;});
+  const cf=new Set();
+  for(const[a,b]of(args.conflicts||[])){
+    const ia=idxBySid[a],ib=idxBySid[b];
+    if(ia==null||ib==null)continue;
+    const[ax,ay]=args.desk_pts[ia],[bx,by]=args.desk_pts[ib];
+    if(Math.hypot(ax-bx,ay-by)<82*2.5){cf.add(a);cf.add(b);}
+  }
+  return cf;
+}
+
+function render(){
+  if(!args||!assignment)return;
+  const scene=document.getElementById('scene');
+  const W=1000,H=720,DW=82,DH=58;
+  const sc=Math.min((window.innerWidth-16)/W,1);
+  scene.style.width=Math.round(W*sc)+'px';
+  scene.style.height=Math.round(H*sc)+'px';
+  const cf=cfSids();
+  const sm={};for(const s of args.students)sm[s.sid]=s;
+  scene.innerHTML='';
+
+  args.desk_pts.forEach(([x,y,gid],idx)=>{
+    const div=document.createElement('div');
+    div.className='desk';
+    div.style.cssText=`left:${Math.round(x*sc)}px;top:${Math.round(y*sc)}px;width:${Math.round(DW*sc)}px;height:${Math.round(DH*sc)}px`;
+    const sid=assignment[idx];
+    const s=sid?sm[sid]:null;
+    if(s){
+      const ci=gid>0?gid-1:-1;
+      div.style.background=ci>=0?GC[ci]:'#f5f5f5';
+      div.style.borderColor=ci>=0?GA[ci]:'#888';
+      if(cf.has(sid))div.classList.add('conflict');
+      div.classList.add('occupied');
+      div.draggable=true;
+      div.innerHTML=`<div class="sn">${s.student_number||''}</div><div class="nm">${s.name}</div><div class="bd">${s.gender==='남'?'👦':'👧'}${s.height==='작음'?'🔵':''}</div>`;
+    }else{
+      div.classList.add('empty');
+      div.innerHTML='<div class="ei">+</div>';
+    }
+    div.addEventListener('dragstart',()=>{if(!s)return;dragSrcIdx=idx;setTimeout(()=>div.classList.add('dragging'),0);});
+    div.addEventListener('dragend',()=>{div.classList.remove('dragging');dragSrcIdx=null;});
+    div.addEventListener('dragover',e=>{e.preventDefault();div.classList.add('drag-over');});
+    div.addEventListener('dragleave',()=>div.classList.remove('drag-over'));
+    div.addEventListener('drop',e=>{
+      e.preventDefault();div.classList.remove('drag-over');
+      if(dragSrcIdx!==null&&dragSrcIdx!==idx){
+        [assignment[dragSrcIdx],assignment[idx]]=[assignment[idx],assignment[dragSrcIdx]];
+        dragSrcIdx=null;render();sendV();
+      }
+    });
+    scene.appendChild(div);
+  });
+  sendH();
+}
+window.addEventListener('resize',()=>{if(args)render();});
+</script>
+</body>
+</html>
