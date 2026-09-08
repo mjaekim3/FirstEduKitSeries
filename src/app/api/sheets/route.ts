@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
+let cachedToken: { token: string; exp: number } | null = null;
+
 const SHEET_RE = /\((.+?)\)\s+(\d+-\d+)/;
 const DEFAULT_SID = "14CbSiN8DsAPCeYlyfOZAVyOdGk3EBU-XBxco5mttQlM";
 
 async function getAccessToken(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedToken && cachedToken.exp > now + 60) return cachedToken.token;
+
   const keyJson = process.env.GCP_SERVICE_ACCOUNT_JSON;
   if (!keyJson) throw new Error("GCP_SERVICE_ACCOUNT_JSON 없음");
   const key = JSON.parse(keyJson);
 
-  const now = Math.floor(Date.now() / 1000);
   const header = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const payload = btoa(JSON.stringify({
     iss: key.client_email,
@@ -34,6 +38,7 @@ async function getAccessToken(): Promise<string> {
   });
   const data = await res.json();
   if (!data.access_token) throw new Error("토큰 발급 실패: " + JSON.stringify(data));
+  cachedToken = { token: data.access_token, exp: now + 3600 };
   return data.access_token;
 }
 
