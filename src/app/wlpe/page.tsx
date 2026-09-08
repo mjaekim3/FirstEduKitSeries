@@ -21,7 +21,6 @@ function getTargets(sheets: Sheet[], week: string, grades: string[]): Target[] {
   return targets.sort((a, b) => a.classKey.localeCompare(b.classKey));
 }
 
-
 export default function WLPEPage() {
   const [grades, setGrades] = useState<string[]>([]);
   const [sheets, setSheets] = useState<Sheet[]>([]);
@@ -31,21 +30,24 @@ export default function WLPEPage() {
   const [error, setError] = useState("");
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [prevLoading, setPrevLoading] = useState<Record<string, boolean>>({});
+  const [progress, setProgress] = useState<{ current: number; total: number; label: string } | null>(null);
 
   const toggleGrade = (g: string) =>
     setGrades(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
 
-
   const loadSheets = async () => {
     if (!grades.length) return;
     setLoading(true); setError("");
+    setProgress({ current: 0, total: 1, label: "시트 목록 조회 중..." });
     try {
       const res = await fetch(`${API}/sheets`);
       const data = await res.json();
       setSheets(data.sheets);
       setWeeks(data.weeks);
       setWeek(data.weeks[0] || "");
-    } catch (e: any) { setError(e.message); }
+      setProgress({ current: 1, total: 1, label: "조회 완료!" });
+      setTimeout(() => setProgress(null), 1500);
+    } catch (e: any) { setError(e.message); setProgress(null); }
     finally { setLoading(false); }
   };
 
@@ -63,17 +65,31 @@ export default function WLPEPage() {
   const exportAll = async () => {
     const ts = getTargets(sheets, week, grades);
     if (!ts.length) return;
-    const gids = ts.map(t => t.gid).join(",");
-    const names = ts.map(t => `${t.classKey}_${t.weekLabel}`).join(",");
-    const res = await fetch(`${API}/export-all?gids=${encodeURIComponent(gids)}&names=${encodeURIComponent(names)}`);
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `주간계획서_${week}.zip`;
-    a.click();
+    setProgress({ current: 0, total: ts.length, label: "ZIP 생성 중..." });
+    try {
+      const gids = ts.map(t => t.gid).join(",");
+      const names = ts.map(t => `${t.classKey}_${t.weekLabel}`).join(",");
+      // 진행 시뮬레이션 (서버가 한 번에 응답하므로)
+      let fake = 0;
+      const timer = setInterval(() => {
+        fake = Math.min(fake + 1, ts.length - 1);
+        setProgress({ current: fake, total: ts.length, label: `PDF 변환 중... (${fake}/${ts.length})` });
+      }, 600);
+      const res = await fetch(`${API}/export-all?gids=${encodeURIComponent(gids)}&names=${encodeURIComponent(names)}`);
+      clearInterval(timer);
+      setProgress({ current: ts.length, total: ts.length, label: "다운로드 준비 중..." });
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `주간계획서_${week}.zip`;
+      a.click();
+      setProgress({ current: ts.length, total: ts.length, label: "완료!" });
+      setTimeout(() => setProgress(null), 1500);
+    } catch (e: any) { setError(e.message); setProgress(null); }
   };
 
   const targets = getTargets(sheets, week, grades);
+  const pct = progress ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8">
@@ -96,6 +112,18 @@ export default function WLPEPage() {
         </button>
       </div>
 
+      {/* 진행상황 */}
+      {progress && (
+        <div className="mb-4">
+          <div className="flex justify-between text-sm text-gray-400 mb-1">
+            <span>{progress.label}</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-red-400 mb-4 text-sm">{error}</p>}
 
