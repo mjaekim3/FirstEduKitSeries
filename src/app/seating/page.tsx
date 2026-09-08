@@ -85,9 +85,9 @@ function StudentDialog({student,onSave,onClose}:{student:Student|null;onSave:(s:
 }
 
 export default function SeatingPage() {
-  const [desks,setDesks] = useState<Desk[]>(()=>load('desks',makeDesks()))
-  const [students,setStudents] = useState<Student[]>(()=>load('students',[]))
-  const [conflicts,setConflicts] = useState<ConflictPair[]>(()=>load('conflicts',[]))
+  const [desks,setDesks] = useState<Desk[]>(makeDesks)
+  const [students,setStudents] = useState<Student[]>([])
+  const [conflicts,setConflicts] = useState<ConflictPair[]>([])
   const [selectedDesk,setSelectedDesk] = useState<string|null>(null)
   const [showDialog,setShowDialog] = useState(false)
   const [editingStudent,setEditingStudent] = useState<Student|null>(null)
@@ -98,6 +98,19 @@ export default function SeatingPage() {
   const dragOffset = useRef({x:0,y:0})
   const draggingStudent = useRef<string|null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
+
+  // 자동로드 (hydration 이후)
+  useEffect(()=>{
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_KEY)
+      if(raw) {
+        const saved = JSON.parse(raw)
+        if(saved.desks) setDesks(saved.desks)
+        if(saved.students) setStudents(saved.students)
+        if(saved.conflicts) setConflicts(saved.conflicts)
+      }
+    } catch {}
+  },[])
 
   // 자동저장
   useEffect(()=>{
