@@ -90,7 +90,44 @@ export default function SeatingPage() {
   const [studentModal,setStudentModal]=useState<{student:Student|null}|null>(null)
   const [conflictModal,setConflictModal]=useState(false)
   const [dragOverDesk,setDragOverDesk]=useState<string|null>(null)
+  const [quickAdd,setQuickAdd]=useState<{deskId:string;value:string}|null>(null)
   const dragState=useRef<{type:'desk'|'furniture';id:string;startX:number;startY:number;origX:number;origY:number}|null>(null)
+  type Snapshot={desks:Desk[];furniture:Furniture[]}
+  const historyRef=useRef<{past:Snapshot[];future:Snapshot[]}>({past:[],future:[]})
+  const clipboardRef=useRef<{type:'desk'|'furniture';item:Desk|Furniture}|null>(null)
+  const desksRef=useRef(desks); desksRef.current=desks
+  const furnitureRef=useRef(furniture); furnitureRef.current=furniture
+
+  const pushHistory=useCallback(()=>{
+    historyRef.current.past.push({
+      desks:JSON.parse(JSON.stringify(desksRef.current)),
+      furniture:JSON.parse(JSON.stringify(furnitureRef.current)),
+    })
+    if(historyRef.current.past.length>50) historyRef.current.past.shift()
+    historyRef.current.future=[]
+  },[])
+
+  const undo=useCallback(()=>{
+    const past=historyRef.current.past
+    if(past.length===0) return
+    const prev=past.pop() as Snapshot
+    historyRef.current.future.push({
+      desks:JSON.parse(JSON.stringify(desksRef.current)),
+      furniture:JSON.parse(JSON.stringify(furnitureRef.current)),
+    })
+    setDesks(prev.desks); setFurniture(prev.furniture); setSelected(null)
+  },[])
+
+  const redo=useCallback(()=>{
+    const future=historyRef.current.future
+    if(future.length===0) return
+    const next=future.pop() as Snapshot
+    historyRef.current.past.push({
+      desks:JSON.parse(JSON.stringify(desksRef.current)),
+      furniture:JSON.parse(JSON.stringify(furnitureRef.current)),
+    })
+    setDesks(next.desks); setFurniture(next.furniture); setSelected(null)
+  },[])
 
   useEffect(()=>{
     setMounted(true)
@@ -112,9 +149,73 @@ export default function SeatingPage() {
     try{localStorage.setItem(AUTOSAVE_KEY,JSON.stringify({desks,students,conflicts,furniture,preset}))}catch{}
   },[mounted,desks,students,conflicts,furniture,preset])
 
+  useEffect(()=>{
+    function onKeyDown(e:KeyboardEvent){
+      const tag=(e.target as HTMLElement)?.tagName
+      const inField=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(e.target as HTMLElement)?.isContentEditable
+      const mod=e.ctrlKey||e.metaKey
+
+      if(mod&&!inField&&(e.key==='z'||e.key==='Z')){
+        e.preventDefault()
+        if(e.shiftKey) redo(); else undo()
+        return
+      }
+      if(mod&&!inField&&(e.key==='y'||e.key==='Y')){
+        e.preventDefault(); redo(); return
+      }
+      if(inField) return
+
+      if(mod&&(e.key==='c'||e.key==='C')){
+        if(!selected) return
+        const f=furnitureRef.current.find(x=>x.id===selected)
+        const d=desksRef.current.find(x=>x.id===selected)
+        if(f) clipboardRef.current={type:'furniture',item:f}
+        else if(d) clipboardRef.current={type:'desk',item:d}
+        return
+      }
+      if(mod&&(e.key==='v'||e.key==='V')){
+        const cb=clipboardRef.current
+        if(!cb) return
+        pushHistory()
+        const newId=(cb.type==='desk'?'d':'f')+Date.now()
+        if(cb.type==='furniture'){
+          const src=cb.item as Furniture
+          setFurniture(prev=>[...prev,{...src,id:newId,x:src.x+20,y:src.y+20}])
+        }else{
+          const src=cb.item as Desk
+          setDesks(prev=>[...prev,{...src,id:newId,x:src.x+20,y:src.y+20,studentId:null}])
+        }
+        setSelected(newId)
+        return
+      }
+      if(!selected) return
+      if(e.key==='Delete'||e.key==='Backspace'){
+        e.preventDefault()
+        pushHistory()
+        setFurniture(prev=>prev.filter(f=>f.id!==selected))
+        setDesks(prev=>prev.filter(d=>d.id!==selected))
+        setSelected(null)
+      }
+    }
+    window.addEventListener('keydown',onKeyDown)
+    return ()=>window.removeEventListener('keydown',onKeyDown)
+  },[selected,undo,redo,pushHistory])
+
   const onItemMouseDown=useCallback((e:React.MouseEvent,type:'desk'|'furniture',id:string,origX:number,origY:number)=>{
     if(e.button!==0) return
     e.stopPropagation(); e.preventDefault()
+    pushHistory()
+    if(e.ctrlKey||e.metaKey){
+      const newId=(type==='desk'?'d':'f')+Date.now()
+      if(type==='furniture'){
+        const src=furnitureRef.current.find(f=>f.id===id)
+        if(src) setFurniture(prev=>[...prev,{...src,id:newId}])
+      }else{
+        const src=desksRef.current.find(d=>d.id===id)
+        if(src) setDesks(prev=>[...prev,{...src,id:newId,studentId:null}])
+      }
+      id=newId
+    }
     setSelected(id)
     dragState.current={type,id,startX:e.clientX,startY:e.clientY,origX,origY}
     const onMove=(ev:MouseEvent)=>{
@@ -130,16 +231,18 @@ export default function SeatingPage() {
     const onUp=()=>{dragState.current=null;window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp)}
     window.addEventListener('mousemove',onMove)
     window.addEventListener('mouseup',onUp)
-  },[])
+  },[pushHistory])
 
   const onRightClick=useCallback((e:React.MouseEvent,type:'desk'|'furniture',id:string)=>{
     e.preventDefault();e.stopPropagation()
+    pushHistory()
     if(type==='desk') setDesks(prev=>prev.map(d=>d.id===id?{...d,rotation:((d.rotation||0)+90)%360}:d))
     else setFurniture(prev=>prev.map(f=>f.id===id?{...f,rotation:((f.rotation||0)+90)%360}:f))
-  },[])
+  },[pushHistory])
 
   const onRotateHandleMouseDown=useCallback((e:React.MouseEvent,type:'desk'|'furniture',id:string,cx:number,cy:number,currentRot:number)=>{
     e.stopPropagation();e.preventDefault()
+    pushHistory()
     const startAngleMouse=Math.atan2(e.clientY-cy,e.clientX-cx)*(180/Math.PI)
     const startRot=currentRot
     let lastAngle=startAngleMouse
@@ -155,7 +258,29 @@ export default function SeatingPage() {
     const onUp=()=>{window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp)}
     window.addEventListener('mousemove',onMove)
     window.addEventListener('mouseup',onUp)
-  },[])
+  },[pushHistory])
+
+  const onResizeHandleMouseDown=useCallback((e:React.MouseEvent,id:string,corner:'TL'|'TR'|'BL'|'BR',startX:number,startY:number,startW:number,startH:number)=>{
+    e.stopPropagation();e.preventDefault()
+    pushHistory()
+    const startMouseX=e.clientX,startMouseY=e.clientY
+    const minW=30,minH=20
+    const onMove=(ev:MouseEvent)=>{
+      const dx=ev.clientX-startMouseX,dy=ev.clientY-startMouseY
+      setFurniture(prev=>prev.map(f=>{
+        if(f.id!==id) return f
+        let nx=startX,ny=startY,nw=startW,nh=startH
+        if(corner==='BR'){nw=Math.max(minW,startW+dx);nh=Math.max(minH,startH+dy)}
+        else if(corner==='BL'){nw=Math.max(minW,startW-dx);nh=Math.max(minH,startH+dy);nx=startX+(startW-nw)}
+        else if(corner==='TR'){nw=Math.max(minW,startW+dx);nh=Math.max(minH,startH-dy);ny=startY+(startH-nh)}
+        else if(corner==='TL'){nw=Math.max(minW,startW-dx);nh=Math.max(minH,startH-dy);nx=startX+(startW-nw);ny=startY+(startH-nh)}
+        return {...f,x:Math.round(nx),y:Math.round(ny),w:Math.round(nw),h:Math.round(nh)}
+      }))
+    }
+    const onUp=()=>{window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp)}
+    window.addEventListener('mousemove',onMove)
+    window.addEventListener('mouseup',onUp)
+  },[pushHistory])
 
   const onStudentDragStart=(e:React.DragEvent,sid:string)=>{e.dataTransfer.setData('studentId',sid)}
   const onDeskDrop=(e:React.DragEvent,deskId:string)=>{
@@ -179,6 +304,7 @@ export default function SeatingPage() {
   const assignedIds=new Set(desks.filter(d=>d.studentId).map(d=>d.studentId as string))
 
   function applyPreset(p:string){
+    pushHistory()
     const newDesks=makeDesks(p)
     const oldAssigned=desks.filter(d=>d.studentId)
     newDesks.forEach((nd,i)=>{if(oldAssigned[i]) nd.studentId=oldAssigned[i].studentId})
@@ -186,6 +312,7 @@ export default function SeatingPage() {
   }
 
   function autoAssign(){
+    pushHistory()
     const unassigned=students.filter(s=>!assignedIds.has(s.id))
     const shuffled=[...unassigned].sort(()=>Math.random()-0.5)
     setDesks(prev=>{
@@ -223,6 +350,19 @@ export default function SeatingPage() {
     reader.readAsArrayBuffer(file);e.target.value=''
   }
 
+  function commitQuickAdd(){
+    if(!quickAdd) return
+    const name=quickAdd.value.trim()
+    if(name){
+      pushHistory()
+      const nextNum=students.reduce((m,s)=>Math.max(m,s.number),0)+1
+      const newStudent:Student={id:crypto.randomUUID(),number:nextNum,name,gender:'남',height:'보통',vision:'양호',leadership:'',special:''}
+      setStudents(prev=>[...prev,newStudent])
+      setDesks(prev=>prev.map(d=>d.id===quickAdd.deskId?{...d,studentId:newStudent.id}:d))
+    }
+    setQuickAdd(null)
+  }
+
   function deleteStudent(sid:string){
     setStudents(prev=>prev.filter(s=>s.id!==sid))
     setDesks(prev=>prev.map(d=>d.studentId===sid?{...d,studentId:null}:d))
@@ -241,9 +381,13 @@ export default function SeatingPage() {
             style={{width:'100%',padding:'4px 6px',border:'1px solid #ddd',borderRadius:5,fontSize:11,background:'white',color:'#1A1A2E',marginBottom:5}}>
             {Object.keys(PRESETS).map(p=><option key={p} value={p}>{p}</option>)}
           </select>
+          <div style={{display:'flex',gap:4,marginBottom:4}}>
+            <button onClick={undo} title='실행 취소 (Ctrl+Z)' style={btnStyle('#607D8B',{flex:1,fontSize:11})}>↩ 실행취소</button>
+            <button onClick={redo} title='다시 실행 (Ctrl+Y)' style={btnStyle('#607D8B',{flex:1,fontSize:11})}>↪ 다시실행</button>
+          </div>
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
             <button onClick={autoAssign} style={btnStyle('#1976D2')}>자동 배치</button>
-            <button onClick={()=>setDesks(prev=>prev.map(d=>({...d,studentId:null})))} style={btnStyle('#E53935')}>배치 초기화</button>
+            <button onClick={()=>{pushHistory();setDesks(prev=>prev.map(d=>({...d,studentId:null})))}} style={btnStyle('#E53935')}>배치 초기화</button>
             <button onClick={()=>setStudentModal({student:null})} style={btnStyle('#2E7D32')}>+ 학생 추가</button>
             <div style={{display:'flex',gap:4}}>
               <button onClick={downloadTemplate} style={btnStyle('#546E7A',{flex:1,fontSize:10})}>템플릿 ↓</button>
@@ -301,16 +445,16 @@ export default function SeatingPage() {
               {label:'개방형 사물함',w:300,h:80,bg:'#F8F7F4',border:'#CCCCCC'},
             ].map(f=>(
               <div key={f.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'4px 6px',marginBottom:2,background:'#fff',border:'1px solid #eee',borderRadius:4,fontSize:10}}>
-                <span>{f.label}</span>
-                <button onClick={()=>setFurniture(p=>[...p,{...f,id:'f'+Date.now(),x:200,y:200,tc:f.tc}])}
+                <span style={{color:'#1A1A2E'}}>{f.label}</span>
+                <button onClick={()=>{pushHistory();setFurniture(p=>[...p,{...f,id:'f'+Date.now(),x:200,y:200,tc:f.tc}])}}
                   style={{padding:'2px 7px',background:'#1976D2',color:'white',border:'none',borderRadius:3,fontSize:10,cursor:'pointer'}}>+</button>
               </div>
             ))}
             <div style={{borderTop:'1px solid #eee',marginTop:6,paddingTop:6,fontSize:10,color:'#757575'}}>배치된 가구</div>
             {furniture.map(f=>(
               <div key={f.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'3px 6px',marginBottom:2,background:selected===f.id?'#E3F2FD':'#fafafa',border:'1px solid #eee',borderRadius:4,fontSize:10,cursor:'pointer'}} onClick={()=>setSelected(f.id)}>
-                <span>{f.label}</span>
-                <button onClick={e=>{e.stopPropagation();setFurniture(p=>p.filter(x=>x.id!==f.id));if(selected===f.id)setSelected(null)}}
+                <span style={{color:'#1A1A2E'}}>{f.label}</span>
+                <button onClick={e=>{e.stopPropagation();pushHistory();setFurniture(p=>p.filter(x=>x.id!==f.id));if(selected===f.id)setSelected(null)}}
                   style={{background:'none',border:'none',color:'#E53935',cursor:'pointer',fontSize:12}}>✕</button>
               </div>
             ))}
@@ -329,9 +473,9 @@ export default function SeatingPage() {
                   background:assignedIds.has(s.id)?'#E8F5E9':'#FFF9C4',
                   border:'1px solid #E0E0E0',borderRadius:5,cursor:'grab',fontSize:11,
                   display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <span>
+                <span style={{color:'#1A1A2E'}}>
                   <span style={{color:'#999',fontSize:9}}>{s.number}번 </span>
-                  <b>{s.name}</b>
+                  <b style={{color:'#1A1A2E'}}>{s.name}</b>
                   <span style={{color:s.gender==='남'?'#1976D2':'#E53935',fontSize:9}}> {s.gender}</span>
                   {tags.length>0&&<span style={{color:'#888',fontSize:8}}> {tags.join(' ')}</span>}
                   {s.leadership&&<span style={{color:'#5C6BC0',fontSize:8}}> [{s.leadership}]</span>}
@@ -370,6 +514,17 @@ export default function SeatingPage() {
                 {selected===f.id&&<div
                   onMouseDown={e=>{const r=(e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();onRotateHandleMouseDown(e,'furniture',f.id,r.left+r.width/2,r.top+r.height/2,f.rotation||0)}}
                   style={{position:'absolute',top:-24,left:'50%',transform:'translateX(-50%)',width:14,height:14,borderRadius:'50%',background:'#FF6F00',border:'2px solid #E65100',cursor:'crosshair',zIndex:10}}/>}
+                {selected===f.id&&([
+                  {c:'TL' as const,top:-5,left:-5,cursor:'nwse-resize'},
+                  {c:'TR' as const,top:-5,right:-5,cursor:'nesw-resize'},
+                  {c:'BL' as const,bottom:-5,left:-5,cursor:'nesw-resize'},
+                  {c:'BR' as const,bottom:-5,right:-5,cursor:'nwse-resize'},
+                ]).map(h=>(
+                  <div key={h.c}
+                    onMouseDown={e=>onResizeHandleMouseDown(e,f.id,h.c,f.x,f.y,f.w,f.h)}
+                    style={{position:'absolute',top:h.top,left:h.left,right:(h as {right?:number}).right,bottom:(h as {bottom?:number}).bottom,
+                      width:10,height:10,background:'#1976D2',border:'1.5px solid #0D47A1',borderRadius:2,cursor:h.cursor,zIndex:11}}/>
+                ))}
               </div>
             )
           })}
@@ -389,14 +544,31 @@ export default function SeatingPage() {
                 onDragOver={e=>{e.preventDefault();setDragOverDesk(d.id)}}
                 onDragLeave={()=>setDragOverDesk(null)}
                 onDrop={e=>onDeskDrop(e,d.id)}
-                onDoubleClick={()=>stu&&setStudentModal({student:stu})}
+                onDoubleClick={()=>stu?setStudentModal({student:stu}):setQuickAdd({deskId:d.id,value:''})}
                 style={{position:'absolute',left:d.x,top:d.y,width:DW,height:DH,transform:`rotate(${d.rotation||0}deg)`,transformOrigin:'center center',
                   border:`${bdW}px solid ${bd}`,borderRadius:5,background:bg,
                   cursor:'grab',userSelect:'none',zIndex:2,
                   boxShadow:isSel?'0 0 0 2px #90CAF9':'0 1px 3px rgba(0,0,0,0.08)',
                   overflow:'visible'}}>
                 {stu ? <DeskContent stu={stu} onRemove={e=>{e.stopPropagation();setDesks(prev=>prev.map(dd=>dd.id===d.id?{...dd,studentId:null}:dd))}}/> :
-                  <div style={{display:'flex',height:'100%',alignItems:'center',justifyContent:'center',color:'#C8C5BC',fontSize:9,overflow:'hidden',borderRadius:5}}>빈 자리</div>
+                  quickAdd?.deskId===d.id ? (
+                    <div style={{display:'flex',height:'100%',alignItems:'center',justifyContent:'center'}}>
+                      <input autoFocus value={quickAdd.value}
+                        onMouseDown={e=>e.stopPropagation()}
+                        onClick={e=>e.stopPropagation()}
+                        onChange={e=>setQuickAdd({deskId:d.id,value:e.target.value})}
+                        onKeyDown={e=>{
+                          e.stopPropagation()
+                          if(e.key==='Enter') commitQuickAdd()
+                          else if(e.key==='Escape') setQuickAdd(null)
+                        }}
+                        onBlur={commitQuickAdd}
+                        placeholder='이름 입력 후 Enter'
+                        style={{width:'88%',height:20,fontSize:10,textAlign:'center',border:'1px solid #1976D2',borderRadius:3,color:'#1A1A2E',outline:'none'}}/>
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',height:'100%',alignItems:'center',justifyContent:'center',color:'#C8C5BC',fontSize:9,overflow:'hidden',borderRadius:5}}>빈 자리</div>
+                  )
                 }
                 {isSel&&<div
                   onMouseDown={e=>{const r=(e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();onRotateHandleMouseDown(e,'desk',d.id,r.left+r.width/2,r.top+r.height/2,d.rotation||0)}}
@@ -462,7 +634,7 @@ function StudentModal({student,onSave,onClose}:{student:Student|null;onSave:(s:S
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:12,padding:24,width:320,boxShadow:'0 8px 32px rgba(0,0,0,0.2)'}}>
-        <h3 style={{margin:'0 0 14px',fontSize:15}}>{student?'학생 수정':'학생 추가'}</h3>
+        <h3 style={{margin:'0 0 14px',fontSize:15,color:'#1A1A2E'}}>{student?'학생 수정':'학생 추가'}</h3>
         {([['number','번호','number'],['name','이름','text'],['leadership','리더십','text'],['special','특이사항','text']] as [keyof Student,string,string][]).map(([k,label,type])=>(
           <div key={k} style={{marginBottom:8}}>
             <label style={{fontSize:11,color:'#555'}}>{label}</label>
@@ -480,7 +652,7 @@ function StudentModal({student,onSave,onClose}:{student:Student|null;onSave:(s:S
           </div>
         ))}
         <div style={{display:'flex',gap:8,marginTop:14}}>
-          <button onClick={onClose} style={{flex:1,padding:'8px',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:12}}>취소</button>
+          <button onClick={onClose} style={{flex:1,padding:'8px',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:12,color:'#1A1A2E',background:'white'}}>취소</button>
           <button onClick={()=>onSave(form)} style={{flex:1,padding:'8px',background:'#1976D2',color:'white',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>저장</button>
         </div>
       </div>
@@ -498,13 +670,13 @@ function ConflictModal({students,conflicts,setConflicts,onClose}:{students:Stude
   return (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:12,padding:24,width:340,maxHeight:'80vh',overflowY:'auto',boxShadow:'0 8px 32px rgba(0,0,0,0.2)'}}>
-        <h3 style={{margin:'0 0 14px',fontSize:15}}>갈등 학생 관리</h3>
+        <h3 style={{margin:'0 0 14px',fontSize:15,color:'#1A1A2E'}}>갈등 학생 관리</h3>
         <div style={{display:'flex',gap:6,marginBottom:10}}>
-          <select value={a} onChange={e=>setA(e.target.value)} style={{flex:1,padding:'5px',border:'1px solid #ddd',borderRadius:6,fontSize:12}}>
+          <select value={a} onChange={e=>setA(e.target.value)} style={{flex:1,padding:'5px',border:'1px solid #ddd',borderRadius:6,fontSize:12,color:'#1A1A2E',background:'white'}}>
             <option value=''>학생 A</option>
             {students.map(s=><option key={s.id} value={s.id}>{s.name} ({s.number}번)</option>)}
           </select>
-          <select value={b} onChange={e=>setB(e.target.value)} style={{flex:1,padding:'5px',border:'1px solid #ddd',borderRadius:6,fontSize:12}}>
+          <select value={b} onChange={e=>setB(e.target.value)} style={{flex:1,padding:'5px',border:'1px solid #ddd',borderRadius:6,fontSize:12,color:'#1A1A2E',background:'white'}}>
             <option value=''>학생 B</option>
             {students.map(s=><option key={s.id} value={s.id}>{s.name} ({s.number}번)</option>)}
           </select>
@@ -520,7 +692,7 @@ function ConflictModal({students,conflicts,setConflicts,onClose}:{students:Stude
           )
         })}
         {conflicts.length===0&&<div style={{color:'#aaa',fontSize:12,textAlign:'center',padding:'10px 0'}}>갈등 쌍 없음</div>}
-        <button onClick={onClose} style={{width:'100%',marginTop:12,padding:'8px',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:12}}>닫기</button>
+        <button onClick={onClose} style={{width:'100%',marginTop:12,padding:'8px',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:12,color:'#1A1A2E',background:'white'}}>닫기</button>
       </div>
     </div>
   )
