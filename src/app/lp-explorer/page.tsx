@@ -97,7 +97,14 @@ export default function LPExplorerPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/lp-explorer/me").then((r) => r.json()).then((d) => setUserEmail(d.email)).catch(() => {});
+    fetch("/api/lp-explorer/me").then((r) => r.json()).then((d) => {
+      setUserEmail(d.email);
+      if (d.email) {
+        fetch("/api/lp-explorer/settings").then((r) => r.json()).then((s) => {
+          setCfg((prev) => ({ ...prev, apiKey: s.apiKey, defaultEffort: s.defaultEffort, standard: s.standard }));
+        }).catch(() => {});
+      }
+    }).catch(() => {});
   }, []);
 
   const toast = (msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(""), 2200); };
@@ -167,7 +174,28 @@ export default function LPExplorerPage() {
         )}
         {tab === "community" && <CommunityView toast={toast} onImport={(a) => { setActivities((prev) => [...prev, { ...a, id: "act_" + Date.now() }]); toast(`'${a.name}' 활동을 내 목록에 추가했습니다.`); }} />}
         {tab === "settings" && (
-          <SettingsView cfg={cfg} onSave={(c) => { setCfg(c); toast("설정이 저장되었습니다."); }} toast={toast} />
+          <SettingsView
+            cfg={cfg}
+            userEmail={userEmail}
+            onSave={async (c) => {
+              setCfg(c);
+              if (userEmail) {
+                try {
+                  const resp = await fetch("/api/lp-explorer/settings", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(c),
+                  });
+                  if (!resp.ok) { toast("서버 저장 실패, 이 브라우저에만 저장됨"); return; }
+                  toast("설정이 저장되었습니다 (계정에 동기화됨).");
+                } catch {
+                  toast("서버 저장 실패, 이 브라우저에만 저장됨");
+                }
+              } else {
+                toast("설정이 저장되었습니다 (이 브라우저에만, 로그인하면 계정 동기화).");
+              }
+            }}
+            toast={toast}
+          />
         )}
       </main>
 
@@ -552,12 +580,18 @@ function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImpo
 
 /* ---------- 설정 ---------- */
 function SettingsView({
-  cfg, onSave, toast,
-}: { cfg: Config; onSave: (c: Config) => void; toast: (m: string) => void }) {
+  cfg, userEmail, onSave, toast,
+}: { cfg: Config; userEmail: string | null; onSave: (c: Config) => void; toast: (m: string) => void }) {
   const [local, setLocal] = useState<Config>(cfg);
+  useEffect(() => { setLocal(cfg); }, [cfg]);
 
   return (
     <>
+      {userEmail && (
+        <p className="text-[#9fb3a7] text-xs mb-3">
+          {userEmail}로 로그인됨 — 이 설정은 계정에 암호화되어 저장되고, 다른 기기에서 로그인해도 불러와집니다.
+        </p>
+      )}
       <div className={card}>
         <h2 className="text-[13px] text-[#9fb3a7] font-medium mb-3">Google AI Studio API 키</h2>
         <p className="text-[#9fb3a7] text-xs mb-2">발급: aistudio.google.com → Get API key. 이 브라우저에만 저장됩니다.</p>
