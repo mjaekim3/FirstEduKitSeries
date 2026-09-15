@@ -166,6 +166,7 @@ export default function LPExplorerPage() {
             selected={selected}
             onSelect={setSelectedId}
             onDropTag={(id, tag) => attachTag(id, tag)}
+            onDelete={(id) => { setActivities((prev) => prev.filter((a) => a.id !== id)); setSelectedId(null); toast("삭제되었습니다."); }}
           />
         )}
         {tab === "wizard" && <WizardView activities={activities} allTags={allTags} />}
@@ -178,7 +179,7 @@ export default function LPExplorerPage() {
             toast={toast}
           />
         )}
-        {tab === "community" && <CommunityView toast={toast} onImport={(a) => { setActivities((prev) => [...prev, { ...a, id: "act_" + Date.now() }]); toast(`'${a.name}' 활동을 내 목록에 추가했습니다.`); }} />}
+        {tab === "community" && <CommunityView toast={toast} userEmail={userEmail} onImport={(a) => { setActivities((prev) => [...prev, { ...a, id: "act_" + Date.now() }]); toast(`'${a.name}' 활동을 내 목록에 추가했습니다.`); }} />}
         {tab === "settings" && (
           <SettingsView
             cfg={cfg}
@@ -216,11 +217,11 @@ export default function LPExplorerPage() {
 
 /* ---------- DB 관리 ---------- */
 function DBView({
-  tree, activities, allTags, search, setSearch, selected, onSelect, onDropTag,
+  tree, activities, allTags, search, setSearch, selected, onSelect, onDropTag, onDelete,
 }: {
   tree: Record<string, string[]>; activities: Activity[]; allActivities: Activity[]; allTags: string[];
   search: string; setSearch: (v: string) => void; selected: Activity | null;
-  onSelect: (id: string) => void; onDropTag: (id: string, tag: string) => void;
+  onSelect: (id: string) => void; onDropTag: (id: string, tag: string) => void; onDelete: (id: string) => void;
 }) {
   const [dragOver, setDragOver] = useState(false);
   return (
@@ -274,6 +275,14 @@ function DBView({
             {`태그: ${selected.tags.join(", ")}`}
             {selected.source && `\n\n출처: ${selected.source}`}
           </div>
+        )}
+        {selected && (
+          <button
+            className={btnSecondary + " mt-3"}
+            onClick={() => { if (confirm(`'${selected.name}'을 목록에서 삭제할까요?`)) onDelete(selected.id); }}
+          >
+            이 활동 삭제
+          </button>
         )}
       </div>
 
@@ -554,7 +563,7 @@ function RecordView({
 }
 
 /* ---------- 커뮤니티 ---------- */
-function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImport: (a: Activity) => void }) {
+function CommunityView({ toast, userEmail, onImport }: { toast: (m: string) => void; userEmail: string | null; onImport: (a: Activity) => void }) {
   const [list, setList] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -567,6 +576,19 @@ function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImpo
       .finally(() => setLoading(false));
   }, []);
 
+  async function handleUnpublish(id: string) {
+    if (!confirm("이 활동을 커뮤니티 공개에서 삭제할까요?")) return;
+    try {
+      const resp = await fetch(`/api/lp-explorer?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) { toast("삭제 실패: " + (json.error || "알 수 없는 오류")); return; }
+      setList((prev) => prev.filter((a) => a.id !== id));
+      toast("커뮤니티에서 삭제되었습니다.");
+    } catch (err: any) {
+      toast("삭제 실패 (네트워크): " + (err?.message || String(err)));
+    }
+  }
+
   return (
     <div className={card}>
       <h2 className="text-[13px] text-[#9fb3a7] font-medium mb-3">공개된 활동 (다른 선생님 + 내가 공개한 것)</h2>
@@ -575,6 +597,7 @@ function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImpo
       <div className="space-y-2">
         {list.map((a) => {
           const expanded = expandedId === a.id;
+          const isMine = userEmail && (a as any).owner_email === userEmail;
           return (
             <div key={a.id} className="border border-[#33493c] rounded-lg px-3 py-2.5">
               <div className="cursor-pointer" onClick={() => setExpandedId(expanded ? null : a.id)}>
@@ -595,6 +618,7 @@ function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImpo
                   {expanded ? "접기" : "자세히 보기"}
                 </button>
                 <button className={btnSecondary} onClick={() => onImport(a)}>내 목록에 추가</button>
+                {isMine && <button className={btnSecondary} onClick={() => handleUnpublish(a.id)}>공개 취소</button>}
               </div>
             </div>
           );
