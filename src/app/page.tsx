@@ -14,6 +14,11 @@ export default function Home() {
           <div className="font-semibold">Seating Chart</div>
           <div className="text-sm text-blue-200">자리 배치 & 드래그</div>
         </a>
+        <a href="/lp-explorer" className="bg-emerald-800 hover:bg-emerald-700 rounded-xl p-6 block">
+          <div className="text-2xl mb-2">🏃</div>
+          <div className="font-semibold">LP Explorer</div>
+          <div className="text-sm text-emerald-200">체육 레슨플랜 조립기</div>
+        </a>
       </div>
     </main>
   )
