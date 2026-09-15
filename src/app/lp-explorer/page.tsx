@@ -130,7 +130,13 @@ export default function LPExplorerPage() {
           <div className="text-[12px] text-[#9fb3a7] mt-0.5">개인 데이터는 브라우저에, 공개 활동만 서버에 저장됩니다</div>
         </div>
         <div className="text-[12px] text-[#9fb3a7]">
-          {userEmail ? `${userEmail}로 로그인됨` : <a href="/login" className="underline">Google로 로그인</a>}
+          {userEmail ? (
+            <>
+              {userEmail}로 로그인됨 · <a href="/api/lp-explorer/logout" className="underline">로그아웃</a>
+            </>
+          ) : (
+            <a href="/login" className="underline">Google로 로그인</a>
+          )}
         </div>
       </header>
 
@@ -551,11 +557,12 @@ function RecordView({
 function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImport: (a: Activity) => void }) {
   const [list, setList] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/lp-explorer")
       .then((r) => r.json())
-            .then((rows: Activity[]) => setList(rows))
+      .then((rows: Activity[]) => setList(rows))
       .catch(() => toast("커뮤니티 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
   }, []);
@@ -566,13 +573,32 @@ function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImpo
       {loading && <div className="text-[#9fb3a7]">불러오는 중...</div>}
       {!loading && list.length === 0 && <div className="text-[#9fb3a7]">아직 공개된 활동이 없습니다.</div>}
       <div className="space-y-2">
-        {list.map((a) => (
-          <div key={a.id} className="border border-[#33493c] rounded-lg px-3 py-2.5">
-            <div className="font-semibold">[{a.slot}] {a.name}</div>
-            <div className="text-[#9fb3a7] text-xs mt-1">{a.description}</div>
-            <button className={btnSecondary + " mt-2"} onClick={() => onImport(a)}>내 목록에 추가</button>
-          </div>
-        ))}
+        {list.map((a) => {
+          const expanded = expandedId === a.id;
+          return (
+            <div key={a.id} className="border border-[#33493c] rounded-lg px-3 py-2.5">
+              <div className="cursor-pointer" onClick={() => setExpandedId(expanded ? null : a.id)}>
+                <div className="font-semibold">[{a.slot}] {a.name}</div>
+                <div className="text-[#9fb3a7] text-xs mt-1">{a.description}</div>
+              </div>
+              {expanded && (
+                <div className="mt-2 text-xs whitespace-pre-wrap leading-relaxed border-t border-[#33493c] pt-2">
+                  {a.steps && a.steps.length > 0 && `진행 순서:\n${a.steps.map((s) => "- " + s).join("\n")}\n\n`}
+                  {a.scoring && `승부/평가 방식: ${a.scoring}\n\n`}
+                  {`준비물: ${(a.equipment || []).join(", ")}\n`}
+                  {`태그: ${(a.tags || []).join(", ")}`}
+                  {a.source && `\n출처: ${a.source}`}
+                </div>
+              )}
+              <div className="mt-2 flex gap-2">
+                <button className={btnSecondary} onClick={() => setExpandedId(expanded ? null : a.id)}>
+                  {expanded ? "접기" : "자세히 보기"}
+                </button>
+                <button className={btnSecondary} onClick={() => onImport(a)}>내 목록에 추가</button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
