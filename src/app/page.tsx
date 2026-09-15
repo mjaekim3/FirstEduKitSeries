@@ -16,7 +16,7 @@ export default function Home() {
         </a>
         <a href="/lp-explorer" className="bg-emerald-800 hover:bg-emerald-700 rounded-xl p-6 block">
           <div className="text-2xl mb-2">🏃</div>
-          <div className="font-semibold">LP Explorer</div>
+          <div className="font-semibold">Lesson Plan Explorer</div>
           <div className="text-sm text-emerald-200">체육 레슨플랜 조립기</div>
         </a>
       </div>
