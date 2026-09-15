@@ -67,8 +67,8 @@ const SEED: Activity[] = [
     description: "발목→무릎→허벅지→허리 단계별, 넘기/감기 동작", steps: [], scoring: "", source: "" },
 ];
 
-type Config = { apiKey: string; defaultEffort: string; standard: string; sbUrl: string; sbKey: string; formUrl: string; formEntry: string };
-const DEFAULT_CONFIG: Config = { apiKey: "", defaultEffort: "자세히", standard: "TEKS (Texas)", sbUrl: "", sbKey: "", formUrl: "", formEntry: "" };
+type Config = { apiKey: string; defaultEffort: string; standard: string; formUrl: string; formEntry: string };
+const DEFAULT_CONFIG: Config = { apiKey: "", defaultEffort: "자세히", standard: "TEKS (Texas)", formUrl: "", formEntry: "" };
 
 function useLocalStorage<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(initial);
@@ -90,11 +90,15 @@ const tagChip = "inline-block bg-[#24382d] text-[#c9a15a] border border-[#33493c
 export default function LPExplorerPage() {
   const [activities, setActivities] = useLocalStorage<Activity[]>("lpx_activities", SEED);
   const [cfg, setCfg] = useLocalStorage<Config>("lpx_config", DEFAULT_CONFIG);
-  const [tab, setTab] = useState<"db" | "wizard" | "record" | "settings">("db");
+  const [tab, setTab] = useState<"db" | "wizard" | "record" | "community" | "settings">("db");
   const [toastMsg, setToastMsg] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [draggingTag, setDraggingTag] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/lp-explorer/me").then((r) => r.json()).then((d) => setUserEmail(d.email)).catch(() => {});
+  }, []);
 
   const toast = (msg: string) => { setToastMsg(msg); setTimeout(() => setToastMsg(""), 2200); };
   const allTags = [...new Set(activities.flatMap((a) => a.tags))].sort();
@@ -116,13 +120,16 @@ export default function LPExplorerPage() {
       <header className="px-6 py-4 border-b border-[#33493c] flex items-center justify-between">
         <div>
           <h1 className="text-[17px] font-semibold tracking-tight">Lesson Plan Explorer</h1>
-          <div className="text-[12px] text-[#9fb3a7] mt-0.5">웹앱 버전 · 개인 데이터는 이 브라우저에 저장됩니다</div>
+          <div className="text-[12px] text-[#9fb3a7] mt-0.5">개인 데이터는 브라우저에, 공개 활동만 서버에 저장됩니다</div>
+        </div>
+        <div className="text-[12px] text-[#9fb3a7]">
+          {userEmail ? `${userEmail}로 로그인됨` : <a href="/login" className="underline">Google로 로그인</a>}
         </div>
       </header>
 
       <nav className="px-6 flex gap-1 border-b border-[#33493c]">
         {([
-          ["db", "DB 관리"], ["wizard", "위저드"], ["record", "오늘 수업 기록"], ["settings", "설정"],
+          ["db", "DB 관리"], ["wizard", "위저드"], ["record", "오늘 수업 기록"], ["community", "커뮤니티"], ["settings", "설정"],
         ] as const).map(([key, label_]) => (
           <button
             key={key}
@@ -153,18 +160,14 @@ export default function LPExplorerPage() {
           <RecordView
             cfg={cfg}
             subcats={subcats}
+            userEmail={userEmail}
             onRegister={(a) => { setActivities((prev) => [...prev, a]); toast(`'${a.name}' 활동이 등록되었습니다.`); }}
             toast={toast}
           />
         )}
+        {tab === "community" && <CommunityView toast={toast} onImport={(a) => { setActivities((prev) => [...prev, { ...a, id: "act_" + Date.now() }]); toast(`'${a.name}' 활동을 내 목록에 추가했습니다.`); }} />}
         {tab === "settings" && (
-          <SettingsView
-            cfg={cfg}
-            onSave={(c) => { setCfg(c); toast("설정이 저장되었습니다."); }}
-            activities={activities}
-            setActivities={setActivities}
-            toast={toast}
-          />
+          <SettingsView cfg={cfg} onSave={(c) => { setCfg(c); toast("설정이 저장되었습니다."); }} toast={toast} />
         )}
       </main>
 
@@ -346,8 +349,8 @@ function WizardView({ activities, allTags }: { activities: Activity[]; allTags: 
 
 /* ---------- 오늘 수업 기록 ---------- */
 function RecordView({
-  cfg, subcats, onRegister, toast,
-}: { cfg: Config; subcats: string[]; onRegister: (a: Activity) => void; toast: (m: string) => void }) {
+  cfg, subcats, userEmail, onRegister, toast,
+}: { cfg: Config; subcats: string[]; userEmail: string | null; onRegister: (a: Activity) => void; toast: (m: string) => void }) {
   const [raw, setRaw] = useState("");
   const [source, setSource] = useState("");
   const [effort, setEffort] = useState(cfg.defaultEffort);
@@ -433,6 +436,18 @@ function RecordView({
     toast(`'${activity.name}' 활동을 구글 폼으로 보냈습니다.`);
   }
 
+  async function publishToCommunity() {
+    const activity = buildActivity();
+    if (!activity) return;
+    if (!userEmail) { toast("커뮤니티 공개는 로그인 후 가능합니다."); return; }
+    const resp = await fetch("/api/lp-explorer", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...activity, is_public: true }),
+    });
+    if (!resp.ok) { toast("공개 실패: " + (await resp.text())); return; }
+    toast(`'${activity.name}' 활동을 커뮤니티에 공개했습니다.`);
+  }
+
   return (
     <>
       <div className={card}>
@@ -488,62 +503,54 @@ function RecordView({
           <label className={label}>준비물 (쉼표 구분)</label>
           <input className={input} value={form.equip} onChange={(e) => setForm({ ...form, equip: e.target.value })} />
           <div className="flex gap-2.5 mt-3">
-            <button className={btn} onClick={() => { const a = buildActivity(); if (a) onRegister(a); }}>등록</button>
+            <button className={btn} onClick={() => { const a = buildActivity(); if (a) onRegister(a); }}>등록 (개인용)</button>
+            <button className={btnSecondary} onClick={publishToCommunity}>커뮤니티에 공개</button>
             <button className={btnSecondary} onClick={sendToGoogleForm}>구글 폼으로 보내기</button>
             <button className={btnSecondary} onClick={reset}>초기화</button>
           </div>
+          {!userEmail && <p className="text-[#9fb3a7] text-xs mt-2">커뮤니티 공개는 <a href="/login" className="underline">로그인</a> 후 가능합니다.</p>}
         </div>
       )}
     </>
   );
 }
 
+/* ---------- 커뮤니티 ---------- */
+function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImport: (a: Activity) => void }) {
+  const [list, setList] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/lp-explorer")
+      .then((r) => r.json())
+      .then((rows: { data: Activity; is_public: boolean }[]) => setList(rows.map((r) => r.data)))
+      .catch(() => toast("커뮤니티 목록을 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className={card}>
+      <h2 className="text-[13px] text-[#9fb3a7] font-medium mb-3">공개된 활동 (다른 선생님 + 내가 공개한 것)</h2>
+      {loading && <div className="text-[#9fb3a7]">불러오는 중...</div>}
+      {!loading && list.length === 0 && <div className="text-[#9fb3a7]">아직 공개된 활동이 없습니다.</div>}
+      <div className="space-y-2">
+        {list.map((a) => (
+          <div key={a.id} className="border border-[#33493c] rounded-lg px-3 py-2.5">
+            <div className="font-semibold">[{a.slot}] {a.name}</div>
+            <div className="text-[#9fb3a7] text-xs mt-1">{a.description}</div>
+            <button className={btnSecondary + " mt-2"} onClick={() => onImport(a)}>내 목록에 추가</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------- 설정 ---------- */
 function SettingsView({
-  cfg, onSave, activities, setActivities, toast,
-}: {
-  cfg: Config; onSave: (c: Config) => void; activities: Activity[];
-  setActivities: (fn: (prev: Activity[]) => Activity[]) => void; toast: (m: string) => void;
-}) {
+  cfg, onSave, toast,
+}: { cfg: Config; onSave: (c: Config) => void; toast: (m: string) => void }) {
   const [local, setLocal] = useState<Config>(cfg);
-  const [pushing, setPushing] = useState(false);
-  const [pulling, setPulling] = useState(false);
-
-  function sbHeaders(extra?: Record<string, string>) {
-    return { apikey: local.sbKey, Authorization: `Bearer ${local.sbKey}`, "Content-Type": "application/json", ...extra };
-  }
-
-  async function push() {
-    if (!local.sbUrl || !local.sbKey) { toast("Supabase URL/키를 먼저 저장하세요."); return; }
-    setPushing(true);
-    try {
-      const rows = activities.map((a) => ({ id: a.id, data: a }));
-      const resp = await fetch(`${local.sbUrl}/rest/v1/activities`, {
-        method: "POST", headers: sbHeaders({ Prefer: "resolution=merge-duplicates" }), body: JSON.stringify(rows),
-      });
-      if (!resp.ok) throw new Error(`${resp.status} ${await resp.text()}`);
-      toast(`${rows.length}개 활동을 서버에 업로드했습니다.`);
-    } catch (e: any) { toast("업로드 실패: " + e.message); }
-    finally { setPushing(false); }
-  }
-
-  async function pull() {
-    if (!local.sbUrl || !local.sbKey) { toast("Supabase URL/키를 먼저 저장하세요."); return; }
-    setPulling(true);
-    try {
-      const resp = await fetch(`${local.sbUrl}/rest/v1/activities?select=data`, { headers: sbHeaders() });
-      if (!resp.ok) throw new Error(`${resp.status} ${await resp.text()}`);
-      const rows: { data: Activity }[] = await resp.json();
-      setActivities((prev) => {
-        const byId: Record<string, Activity> = {};
-        prev.forEach((a) => (byId[a.id] = a));
-        rows.forEach((r) => (byId[r.data.id] = r.data));
-        return Object.values(byId);
-      });
-      toast(`서버에서 ${rows.length}개 활동을 가져왔습니다.`);
-    } catch (e: any) { toast("가져오기 실패: " + e.message); }
-    finally { setPulling(false); }
-  }
 
   return (
     <>
@@ -573,18 +580,6 @@ function SettingsView({
         <input className={input} value={local.formUrl} onChange={(e) => setLocal({ ...local, formUrl: e.target.value })} />
         <label className={label}>질문의 entry ID</label>
         <input className={input} value={local.formEntry} onChange={(e) => setLocal({ ...local, formEntry: e.target.value })} />
-      </div>
-
-      <div className={card}>
-        <h2 className="text-[13px] text-[#9fb3a7] font-medium mb-3">Supabase 서버 동기화 (여러 기기 오갈 때)</h2>
-        <label className={label}>Supabase Project URL</label>
-        <input className={input} value={local.sbUrl} onChange={(e) => setLocal({ ...local, sbUrl: e.target.value })} />
-        <label className={label}>Supabase anon key</label>
-        <input className={input} value={local.sbKey} onChange={(e) => setLocal({ ...local, sbKey: e.target.value })} />
-        <div className="flex gap-2.5 mt-3">
-          <button className={btnSecondary} disabled={pushing} onClick={push}>{pushing ? "업로드 중..." : "서버로 업로드"}</button>
-          <button className={btnSecondary} disabled={pulling} onClick={pull}>{pulling ? "가져오는 중..." : "서버에서 가져오기"}</button>
-        </div>
       </div>
 
       <button className={btn} onClick={() => onSave(local)}>저장</button>
