@@ -437,17 +437,21 @@ function RecordView({
   }
 
   async function publishToCommunity() {
-    const activity = buildActivity();
-    if (!activity) return;
-    if (!userEmail) { toast("커뮤니티 공개는 로그인 후 가능합니다."); return; }
-    const resp = await fetch("/api/lp-explorer", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...activity, is_public: true }),
-    });
-    if (!resp.ok) { toast("공개 실패: " + (await resp.text())); return; }
-    toast(`'${activity.name}' 활동을 커뮤니티에 공개했습니다.`);
+        const activity = buildActivity();
+        if (!activity) return;
+        if (!userEmail) { toast("커뮤니티 공개는 로그인 후 가능합니다."); return; }
+        try {
+                const resp = await fetch("/api/lp-explorer", {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ ...activity, is_public: true }),
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (!resp.ok) { toast(`공개 실패 (${resp.status}): ${json.error || "알 수 없는 오류"}`); return; }
+      toast(`'${activity.name}' 활동을 커뮤니티에 공개했습니다.`);
+        } catch (err: any) {
+                toast("공개 실패 (네트워크): " + (err?.message || String(err)));
+        }
   }
-
   return (
     <>
       <div className={card}>
