@@ -527,7 +527,7 @@ function CommunityView({ toast, onImport }: { toast: (m: string) => void; onImpo
   useEffect(() => {
     fetch("/api/lp-explorer")
       .then((r) => r.json())
-      .then((rows: { data: Activity; is_public: boolean }[]) => setList(rows.map((r) => r.data)))
+            .then((rows: Activity[]) => setList(rows))
       .catch(() => toast("커뮤니티 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
   }, []);
