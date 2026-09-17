@@ -17,3 +17,10 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media (pointer: fine) {
+  .login-scene,
+  .login-scene button {
+    cursor: none;
+  }
+}

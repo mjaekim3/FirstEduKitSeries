@@ -1,94 +1,70 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { signIn } from "next-auth/react"
 
 export default function LoginPage() {
-  const [catPos, setCatPos] = useState({ x: -100, y: -100 })
-  const [phase, setPhase] = useState<"follow" | "goto" | "sit">("follow")
-  const mousePos = useRef({ x: 200, y: 300 })
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const animFrame = useRef<number>(0)
-  const phaseRef = useRef<"follow" | "goto" | "sit">("follow")
+  const catRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      mousePos.current = { x: e.clientX, y: e.clientY }
-      if (phaseRef.current === "sit") {
-        phaseRef.current = "follow"
-        setPhase("follow")
-      }
+    let x = 0
+    let y = 0
+    let targetX = 0
+    let targetY = 0
+    let frame = 0
+    let hasMoved = false
+
+    const draw = () => {
+      if (!catRef.current) return
+      catRef.current.style.transform = `translate3d(${x - 32}px, ${y - 32}px, 0)`
     }
+
+    const follow = () => {
+      const dx = targetX - x
+      const dy = targetY - y
+      x += dx * 0.2
+      y += dy * 0.2
+      draw()
+      frame = Math.abs(dx) + Math.abs(dy) > 0.5 ? requestAnimationFrame(follow) : 0
+    }
+
+    const onMove = (event: MouseEvent) => {
+      targetX = event.clientX
+      targetY = event.clientY
+      if (!hasMoved) {
+        x = targetX
+        y = targetY
+        hasMoved = true
+        draw()
+        if (catRef.current) catRef.current.style.opacity = "1"
+      }
+      if (!frame) frame = requestAnimationFrame(follow)
+    }
+
     window.addEventListener("mousemove", onMove)
-
-    // 4초 후 버튼으로 달려감
-    const t = setTimeout(() => {
-      phaseRef.current = "goto"
-      setPhase("goto")
-      const btn = btnRef.current
-      if (btn) {
-        const r = btn.getBoundingClientRect()
-        setCatPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 })
-      }
-      setTimeout(() => {
-        phaseRef.current = "sit"
-        setPhase("sit")
-      }, 800)
-    }, 4000)
-
-    const loop = () => {
-      if (phaseRef.current === "follow") {
-        setCatPos(prev => ({
-          x: prev.x + (mousePos.current.x - prev.x) * 0.15,
-          y: prev.y + (mousePos.current.y - prev.y) * 0.15,
-        }))
-      }
-      animFrame.current = requestAnimationFrame(loop)
-    }
-    animFrame.current = requestAnimationFrame(loop)
 
     return () => {
       window.removeEventListener("mousemove", onMove)
-      cancelAnimationFrame(animFrame.current)
-      clearTimeout(t)
+      cancelAnimationFrame(frame)
     }
   }, [])
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center relative"
-      style={{
-        backgroundImage: "url('/neoburie.jpg')",
-        backgroundSize: "300px 300px",
-        backgroundRepeat: "repeat",
-        cursor: phase === "sit" ? "default" : "none",
-      }}
+      className="login-scene min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-[radial-gradient(circle_at_top,#fafcf8_0%,#e8f0e9_60%,#dce9df_100%)]"
     >
-      <div className="absolute inset-0 bg-white/30" />
-
-      {/* 너부리 커서 */}
       <img
-        src="/neoburie_cursor.png"
+        ref={catRef}
+        src="/cat-cursor.svg"
         alt=""
-        style={{
-          position: "fixed",
-          left: catPos.x - 40,
-          top: catPos.y - 40,
-          width: 80,
-          height: 80,
-          borderRadius: "50%",
-          pointerEvents: "none",
-          zIndex: 9999,
-          transition: phase === "goto" ? "left 0.7s ease, top 0.7s ease" : undefined,
-          transform: phase === "sit" ? "scale(1.2)" : "scale(1)",
-        }}
+        aria-hidden="true"
+        className="login-cat pointer-events-none fixed left-0 top-0 z-50 h-16 w-16 opacity-0 drop-shadow-lg"
       />
 
-      <div className="relative z-10 bg-white/90 p-10 rounded-2xl shadow-xl text-center space-y-6 w-80">
+      <div className="relative z-10 w-80 space-y-6 rounded-2xl border border-[#d7e4d9] bg-white/90 p-10 text-center shadow-xl">
         <h1 className="text-2xl font-bold text-gray-800">FirstEduKit Series</h1>
 
         <button
-          ref={btnRef}
           type="button"
           onClick={() => void signIn("google", { redirectTo: "/" })}
           className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition"
