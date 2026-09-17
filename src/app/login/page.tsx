@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { signIn } from "next-auth/react"
 
 export default function LoginPage() {
   const [catPos, setCatPos] = useState({ x: -100, y: -100 })
@@ -86,12 +87,12 @@ export default function LoginPage() {
       <div className="relative z-10 bg-white/90 p-10 rounded-2xl shadow-xl text-center space-y-6 w-80">
         <h1 className="text-2xl font-bold text-gray-800">FirstEduKit Series</h1>
 
-        <form action="/api/auth/signin/google">
-          <button
-            ref={btnRef}
-            type="submit"
-            className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition"
-          >
+        <button
+          ref={btnRef}
+          type="button"
+          onClick={() => void signIn("google", { redirectTo: "/" })}
+          className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-3 hover:bg-gray-50 transition"
+        >
             <svg className="w-5 h-5" viewBox="0 0 48 48">
               <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.9 7.2v6h7.9c4.6-4.3 7.2-10.6 7.2-17.2z"/>
               <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.9-6c-2.1 1.4-4.8 2.3-7.9 2.3-6 0-11.2-4.1-13-9.6H2.9v6.2C6.8 42.6 14.8 48 24 48z"/>
@@ -99,8 +100,7 @@ export default function LoginPage() {
               <path fill="#EA4335" d="M24 9.5c3.4 0 6.4 1.2 8.8 3.4l6.6-6.6C35.9 2.5 30.4 0 24 0 14.8 0 6.8 5.4 2.9 13.3l8.1 4.2z"/>
             </svg>
             <span className="text-sm font-medium text-gray-700">Google로 로그인</span>
-          </button>
-        </form>
+        </button>
       </div>
 
       <p className="relative z-10 mt-6 text-xs text-gray-600">Made by Mr. Raccoon</p>
