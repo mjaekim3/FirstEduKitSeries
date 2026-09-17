@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { randomUUID } from "node:crypto";
 
 const SB_URL = process.env.SUPABASE_URL!;
 const SB_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const row = {
-      id: body.id,
+      id: `act_${randomUUID()}`,
       name: body.name,
       slot: body.slot,
       default_minutes: body.default_minutes,
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     const resp = await fetch(`${SB_URL}/rest/v1/activities`, {
       method: "POST",
-      headers: { ...sbHeaders(), Prefer: "resolution=merge-duplicates" },
+      headers: sbHeaders(),
       body: JSON.stringify([row]),
     });
     if (!resp.ok) {

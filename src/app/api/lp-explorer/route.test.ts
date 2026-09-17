@@ -28,7 +28,7 @@ describe("POST /api/lp-explorer", () => {
     const inserted = JSON.parse(options.body)[0];
     expect(inserted.id).not.toBe("act_public");
     expect(inserted.owner_email).toBe("teacher@example.com");
-    expect(options.headers.Prefer).not.toContain("resolution=merge-duplicates");
+    expect(options.headers).not.toHaveProperty("Prefer");
   });
 
   it("rejects a caller without a session before writing", async () => {
