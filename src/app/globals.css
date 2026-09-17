@@ -18,9 +18,49 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@media (pointer: fine) {
-  .login-scene,
-  .login-scene button {
-    cursor: none;
-  }
+.login-cat-sprite {
+  background-image: url("/neoburie-pixel-idle.png");
+  background-repeat: no-repeat;
+  background-size: 400% 100%;
+  background-position: 0% 0;
+  image-rendering: pixelated;
+  transform: scaleX(var(--cat-facing, 1));
+  filter: drop-shadow(0 4px 3px rgb(69 56 42 / 18%));
+}
+
+.login-cat.is-moving .login-cat-sprite {
+  background-image: url("/neoburie-pixel-walk.png");
+  animation: cat-walk 680ms linear infinite;
+}
+
+.login-cat:not(.is-moving) .login-cat-sprite {
+  animation: cat-idle 3000ms linear infinite;
+}
+
+.login-cat.is-hopping .login-cat-pose {
+  animation: cat-hop 720ms ease-in-out 1;
+}
+
+@keyframes cat-walk {
+  0%, 24.99% { background-position: 0% 0; }
+  25%, 49.99% { background-position: 33.33% 0; }
+  50%, 74.99% { background-position: 66.67% 0; }
+  75%, 100% { background-position: 100% 0; }
+}
+
+@keyframes cat-idle {
+  0%, 39.99% { background-position: 0% 0; }
+  40%, 69.99% { background-position: 33.33% 0; }
+  70%, 77.99% { background-position: 66.67% 0; }
+  78%, 100% { background-position: 100% 0; }
+}
+
+@keyframes cat-hop {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-17px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-cat .login-cat-sprite,
+  .login-cat.is-hopping .login-cat-pose { animation: none; }
 }
