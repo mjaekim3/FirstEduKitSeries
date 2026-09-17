@@ -38,8 +38,10 @@ export default function LoginPage() {
     }
 
     const setMode = (next: CatMode) => {
-      cat.classList.remove("is-walk", "is-idle", "is-sparkle", "is-sleep", "is-hunt", "is-chase")
-      cat.classList.add(`is-${next}`)
+      // CSS uses is-moving (walk/chase) and is-hopping (idle bounce)
+      cat.classList.remove("is-moving", "is-hopping")
+      if (next === "walk" || next === "chase") cat.classList.add("is-moving")
+      if (next === "idle") cat.classList.add("is-hopping")
       bird.style.opacity = next === "chase" ? "1" : "0"
       mode = next
     }
