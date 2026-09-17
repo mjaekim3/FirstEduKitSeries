@@ -18,8 +18,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-.login-cat-sprite {
-  background-image: url("/neoburie-pixel-idle.png");
+.login-cat {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.login-cat.is-held,
+.login-cat.is-drop {
+  z-index: 20;
+  cursor: grabbing;
+}
+
+.login-cat-pose {
+  position: relative;
+}
+
+.login-cat-sprite,
+.login-cat-sleep {
+  position: absolute;
+  inset: 0;
   background-repeat: no-repeat;
   background-size: 400% 100%;
   background-position: 0% 0;
@@ -28,9 +46,77 @@ body {
   filter: drop-shadow(0 4px 3px rgb(69 56 42 / 18%));
 }
 
-.login-cat.is-moving .login-cat-sprite {
+.login-cat-sprite {
   background-image: url("/neoburie-pixel-walk.png");
+}
+
+.login-cat.is-walk .login-cat-sprite,
+.login-cat.is-chase .login-cat-sprite {
   animation: cat-walk 680ms linear infinite;
+}
+
+.login-cat.is-held .login-cat-sprite,
+.login-cat.is-drop .login-cat-sprite {
+  background-image: url("/neoburie-pixel-held.png");
+}
+
+.login-cat.is-held .login-cat-sprite {
+  animation: cat-walk 540ms linear infinite;
+}
+
+.login-cat.is-drop .login-cat-pose {
+  animation: cat-drop 700ms ease-out 1;
+}
+
+.login-cat-sleep {
+  display: none;
+  background-image: url("/neoburie-pixel-sleep-v2.png");
+}
+
+.login-cat.is-sleep .login-cat-sprite {
+  display: none;
+}
+
+.login-cat.is-sleep .login-cat-sleep {
+  display: block;
+  animation: cat-walk 2200ms linear infinite;
+}
+
+.login-cat-sleep-bubble,
+.login-cat-zzz {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+}
+
+.login-cat.is-sleep .login-cat-sleep-bubble,
+.login-cat.is-sleep .login-cat-zzz {
+  display: block;
+}
+
+.login-cat-sleep-bubble {
+  left: 29%;
+  top: 57%;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #a6c2cc;
+  border-radius: 50%;
+  background: rgb(227 246 251 / 70%);
+  animation: cat-sleep-bubble 1800ms ease-in-out infinite alternate;
+}
+
+.login-cat-zzz {
+  left: 12%;
+  top: 26%;
+  color: #738c9f;
+  font: bold 18px/1 monospace;
+  text-shadow: 1px 1px white;
+  animation: cat-zzz 2200ms ease-out infinite;
+}
+
+.login-bird-wings {
+  transform-origin: 16px 16px;
+  animation: bird-flap 300ms ease-in-out infinite alternate;
 }
 
 @keyframes cat-walk {
@@ -40,6 +126,30 @@ body {
   75%, 100%   { background-position: 100% 0; }
 }
 
+@keyframes cat-drop {
+  0% { transform: translateY(-20px) scaleY(1.04); }
+  55% { transform: translateY(10px) scaleY(.9); }
+  75% { transform: translateY(-5px) scaleY(1.02); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+
+@keyframes cat-sleep-bubble {
+  from { transform: scale(.65); opacity: .55; }
+  to { transform: scale(1.25); opacity: 1; }
+}
+
+@keyframes cat-zzz {
+  from { transform: translateY(5px); opacity: 0; }
+  25%, 70% { opacity: 1; }
+  to { transform: translateY(-20px); opacity: 0; }
+}
+
+@keyframes bird-flap {
+  from { transform: scaleY(.75); }
+  to { transform: scaleY(1.2); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .login-cat .login-cat-sprite { animation: none; }
+  .login-cat *,
+  .login-bird * { animation: none !important; }
 }
