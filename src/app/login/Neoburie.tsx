@@ -1,17 +1,22 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { createFacePainter } from "./neoburieFace"
+import { CAT_TIMING } from "./neoburieTimeline"
 
-type CatMode = "walk" | "chase" | "sleep" | "held" | "drop"
+type CatMode = "walk" | "chase" | "sleep" | "settle" | "wake" | "groom" | "stalk" | "hunt" | "pounce" | "land" | "held" | "dizzy" | "drop"
 
 export default function Neoburie() {
   const catRef = useRef<HTMLDivElement>(null)
+  const faceRef = useRef<HTMLCanvasElement>(null)
   const birdRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const cat = catRef.current
     const bird = birdRef.current
-    if (!cat || !bird) return
+    if (!cat || !bird || !faceRef.current) return
+    const face = faceRef.current
+    const paintFace = createFacePainter(face)
 
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
     let mode: CatMode = reducedMotion ? "sleep" : "walk"
@@ -20,10 +25,26 @@ export default function Neoburie() {
     let lastActivity = performance.now()
     let modeUntil = 0
     let chaseStart = 0
+    let stalkUntil = 0
+    let huntStart = 0
+    let pounceStart = 0
+    let careStart = 0
+    let idleRound = 0
+    let jumpFrom = 0, jumpTo = 0, jumpHeight = 0
+    let lookX = 0, lookY = 0
+    let huntCooldown = 0
+    let cursorMovedAt = 0
+    let cursorX = 0, cursorY = 0
     let stops = 0
     let heldPointerId: number | null = null
     let releaseRequested = false
     let earliestRelease = 0
+    let dizzy = false
+    let spinScore = 0
+    let dragDistance = 0
+    let wriggleStrength = 0.015
+    let lastDragX = 0, lastDragY = 0, lastDragTime = 0
+    let lastDragAngle: number | null = null
     let x = 0, y = 0, targetX = 0, targetY = 0
     let birdX = 0, birdY = 0, birdBaseY = 0, birdDirection = 1
 
@@ -34,11 +55,25 @@ export default function Neoburie() {
     const clamp = (value: number, max: number) => Math.max(0, Math.min(max, value))
     const draw = () => { cat.style.transform = `translate3d(${x}px, ${y}px, 0)` }
 
+    const updateGaze = () => {
+      const facing = cursorX > x + cat.offsetWidth / 2 ? 1 : -1
+      lookX = Math.max(-5, Math.min(5, (cursorX - x - cat.offsetWidth * .75) * facing / 65))
+      lookY = Math.max(-4, Math.min(4, (cursorY - y - cat.offsetHeight * .48) / 65))
+    }
+
+    const applyWriggle = () => {
+      cat.style.setProperty("--cat-wriggle-strength", wriggleStrength.toFixed(3))
+    }
+
     const setMode = (next: CatMode) => {
-      cat.classList.remove("is-walk", "is-chase", "is-sleep", "is-held", "is-drop")
-      if (next === "sleep") cat.style.setProperty("--cat-facing", "1")
+      cat.classList.remove("is-walk", "is-chase", "is-sleep", "is-settle", "is-wake", "is-groom", "is-stalk", "is-hunt", "is-pounce", "is-land", "is-held", "is-dizzy", "is-drop")
+      if (next === "sleep" || next === "settle" || next === "wake" || next === "groom" || next === "held" || next === "dizzy" || next === "drop") {
+        cat.style.setProperty("--cat-facing", "1")
+      }
       cat.classList.add(`is-${next}`)
       bird.style.opacity = next === "chase" ? "1" : "0"
+      if (next !== "pounce") cat.style.setProperty("--cat-lift", "0px")
+      cat.style.setProperty("--cat-shadow-scale", "1")
       mode = next
     }
 
@@ -68,9 +103,13 @@ export default function Neoburie() {
 
     const noteActivity = () => {
       lastActivity = performance.now()
-      if (mode === "sleep" && !reducedMotion) {
-        chooseTarget()
-        setMode("walk")
+      if ((mode === "sleep" || mode === "settle") && !reducedMotion) {
+        const wakingEarly = mode === "settle"
+        careStart = lastActivity - (wakingEarly ? 1200 : 0)
+        modeUntil = careStart + CAT_TIMING.wake
+        setMode("wake")
+      } else if (mode === "groom" && !reducedMotion) {
+        chooseTarget(); setMode("walk")
       }
     }
 
@@ -81,6 +120,36 @@ export default function Neoburie() {
       draw()
     }
 
+    const trackSpin = (event: PointerEvent) => {
+      const dx = event.clientX - lastDragX
+      const dy = event.clientY - lastDragY
+      const distance = Math.hypot(dx, dy)
+      const elapsed = Math.max(0, event.timeStamp - lastDragTime)
+      const speed = distance * 1000 / Math.max(16, elapsed)
+      wriggleStrength = Math.max(wriggleStrength, Math.min(0.14, speed / 7500))
+      applyWriggle()
+      spinScore = Math.max(0, spinScore - elapsed * 0.002)
+      if (distance > 7 && elapsed < 250) {
+        const angle = Math.atan2(dy, dx)
+        if (lastDragAngle !== null) {
+          const turn = Math.atan2(Math.sin(angle - lastDragAngle), Math.cos(angle - lastDragAngle))
+          spinScore += Math.abs(turn) * Math.min(1, distance / 20)
+        }
+        lastDragAngle = angle
+        dragDistance += distance
+      } else if (elapsed >= 250) {
+        lastDragAngle = null
+        dragDistance = 0
+      }
+      lastDragX = event.clientX
+      lastDragY = event.clientY
+      lastDragTime = event.timeStamp
+      if (!dizzy && spinScore > 5 && dragDistance > 260) {
+        dizzy = true
+        cat.classList.add("is-dizzy")
+      }
+    }
+
     const onCatPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return
       event.preventDefault()
@@ -88,6 +157,15 @@ export default function Neoburie() {
       heldPointerId = event.pointerId
       releaseRequested = false
       earliestRelease = performance.now() + 950
+      dizzy = false
+      spinScore = 0
+      dragDistance = 0
+      lastDragAngle = null
+      lastDragX = event.clientX
+      lastDragY = event.clientY
+      lastDragTime = event.timeStamp
+      wriggleStrength = 0.015
+      applyWriggle()
       setMode("held")
       cat.setPointerCapture?.(event.pointerId)
       dragCat(event)
@@ -95,7 +173,23 @@ export default function Neoburie() {
 
     const onPointerMove = (event: PointerEvent) => {
       noteActivity()
-      if (mode === "held" && heldPointerId === event.pointerId && !releaseRequested) dragCat(event)
+      if (mode === "held" && heldPointerId === event.pointerId && !releaseRequested) {
+        trackSpin(event)
+        dragCat(event)
+        return
+      }
+      if (event.pointerType === "mouse" && event.buttons === 0 && !reducedMotion &&
+          (mode === "walk" || mode === "chase" || mode === "stalk" || mode === "hunt" || mode === "pounce")) {
+        if (Math.hypot(event.clientX - cursorX, event.clientY - cursorY) > 1) cursorMovedAt = performance.now()
+        cursorX = event.clientX
+        cursorY = event.clientY
+        updateGaze()
+        if ((mode === "walk" || mode === "chase") && cursorMovedAt >= huntCooldown &&
+            Math.hypot(cursorX - x - cat.offsetWidth / 2, cursorY - y - cat.offsetHeight / 2) > 70) {
+          stalkUntil = cursorMovedAt + 1500
+          setMode("stalk")
+        }
+      }
     }
 
     const onPointerUp = (event: PointerEvent) => {
@@ -141,14 +235,79 @@ export default function Neoburie() {
       const elapsed = Math.min(time - (lastTime || time), 32)
       lastTime = time
 
+      if (mode === "held" || mode === "dizzy") {
+        wriggleStrength = Math.max(0.015, wriggleStrength - elapsed * 0.0001)
+        applyWriggle()
+      }
+
       if (mode === "held" && releaseRequested && time >= earliestRelease) {
+        setMode(dizzy ? "dizzy" : "drop")
+        modeUntil = time + (dizzy ? 1700 : 700)
+      } else if (mode === "dizzy" && time >= modeUntil) {
         setMode("drop")
         modeUntil = time + 700
       } else if (mode === "drop" && time >= modeUntil) {
         if (reducedMotion) setMode("sleep")
         else { chooseTarget(); setMode("walk") }
-      } else if (!reducedMotion && mode !== "held" && mode !== "drop" && mode !== "sleep" && time - lastActivity >= 5000) {
+      } else if (!reducedMotion && mode !== "held" && mode !== "dizzy" && mode !== "drop" && mode !== "sleep" && mode !== "settle" && mode !== "wake" && mode !== "groom" && mode !== "stalk" && mode !== "hunt" && mode !== "pounce" && mode !== "land" && time - lastActivity >= 5000) {
+        careStart = time
+        const next = idleRound++ % 2 === 0 ? "groom" : "settle"
+        modeUntil = time + CAT_TIMING[next]
+        setMode(next)
+      } else if (mode === "wake" && time >= modeUntil) {
+        lastActivity = time
+        huntCooldown = time + 1000
+        chooseTarget(); setMode("walk")
+      } else if (mode === "groom" && time >= modeUntil) {
+        careStart = time; modeUntil = time + CAT_TIMING.settle; setMode("settle")
+      } else if (mode === "settle" && time >= modeUntil) {
         setMode("sleep")
+      } else if (mode === "stalk") {
+        cat.style.setProperty("--cat-facing", cursorX > x + cat.offsetWidth / 2 ? "1" : "-1")
+        updateGaze()
+        if (time >= stalkUntil) {
+          huntStart = time
+          setMode("hunt")
+        } else if (time - cursorMovedAt > 2200) {
+          chooseTarget(); setMode("walk")
+          huntCooldown = time + 1400
+        }
+      } else if (mode === "hunt") {
+        const facing = cursorX >= x + cat.offsetWidth / 2 ? 1 : -1
+        const nextX = clamp(cursorX - cat.offsetWidth * (facing > 0 ? .75 : .25), bounds().maxX)
+        const nextY = clamp(cursorY - cat.offsetHeight * .4, bounds().maxY)
+        const distance = Math.hypot(nextX - x, nextY - y)
+        cat.style.setProperty("--cat-facing", String(facing))
+        moveTowards(nextX, nextY, Math.min(460, 140 + (time - huntStart) * .6), elapsed)
+        // Keep tracking indefinitely while the toy moves. Catch only after it settles nearby.
+        if (time - cursorMovedAt >= 220 && distance < 100) {
+          pounceStart = time
+          jumpFrom = x
+          jumpTo = clamp(x + Math.max(-175, Math.min(175, nextX - x)), bounds().maxX)
+          jumpHeight = Math.min(Math.max(45, y + cat.offsetHeight * .65 - cursorY), 130, Math.max(0, y + 20))
+          setMode("pounce")
+          modeUntil = time + CAT_TIMING.jump
+        }
+      } else if (mode === "pounce") {
+        const progress = Math.min(1, (time - pounceStart) / CAT_TIMING.jump)
+        // Feet stay planted during compression; only the hind-leg push starts the arc.
+        const flight = Math.max(0, Math.min(1, (progress - .14) / .80))
+        const lift = 4 * jumpHeight * flight * (1 - flight)
+        const travel = flight < .48 ? .86 * (1 - (1 - flight / .48) ** 2) : .86 + .14 * (flight - .48) / .52
+        x = jumpFrom + (jumpTo - jumpFrom) * travel
+        cat.style.setProperty("--cat-lift", `${-lift}px`)
+        cat.style.setProperty("--cat-shadow-scale", String(1 - lift / 260))
+        draw()
+        if (time >= modeUntil) {
+          setMode("land")
+          careStart = time
+          modeUntil = time + CAT_TIMING.land
+        }
+      } else if (mode === "land") {
+        if (time >= modeUntil) {
+          if (cursorMovedAt > pounceStart) { huntStart = time; setMode("hunt") }
+          else { chooseTarget(); setMode("walk"); huntCooldown = time + 350 }
+        }
       } else if (mode === "walk" && moveTowards(targetX, targetY, 75, elapsed)) {
         stops += 1
         if (stops % 3 === 0) startChase(time)
@@ -164,6 +323,11 @@ export default function Neoburie() {
         if (time - chaseStart > 4300) { chooseTarget(); setMode("walk") }
       }
 
+      const faceMode = cat.classList.contains("is-dizzy") ? "dizzy" : mode === "stalk" || mode === "pounce" || mode === "land" || mode === "wake" || mode === "groom" || mode === "settle" ? mode : null
+      const focus = Math.max(0, Math.min(1, (time - stalkUntil + 1250) / 700))
+      const painted = paintFace(faceMode, reducedMotion ? 0 : time, focus * focus * (3 - 2 * focus), lookX, lookY, mode === "wake" || mode === "groom" || mode === "settle" || mode === "land" ? (time - careStart) / CAT_TIMING[mode] : mode === "stalk" ? Math.min(1, (time - stalkUntil + 1500) / 1500) : Math.min(1, (time - pounceStart) / CAT_TIMING.jump))
+      cat.classList.toggle("has-painted-pose", painted)
+      cat.classList.toggle("uses-atlas", painted && face.dataset.atlas === "true")
       frame = requestAnimationFrame(roam)
     }
 
@@ -196,12 +360,24 @@ export default function Neoburie() {
 
   return (
     <>
-      <div ref={catRef} role="button" tabIndex={0} aria-label="너부리 들어보기" className="login-cat fixed left-0 top-0 z-0 h-40 w-[120px] opacity-0 sm:h-[200px] sm:w-[150px]">
+      <div ref={catRef} role="button" tabIndex={0} aria-label="너부리 들어보기" className="login-cat fixed left-0 top-0 h-40 w-[120px] opacity-0 sm:h-[200px] sm:w-[150px]">
+        <div className="login-cat-shadow" aria-hidden="true" />
         <div className="login-cat-pose h-full w-full">
-          <div className="login-cat-sprite h-full w-full" />
+          <div className="login-cat-art h-full w-full">
+            <div className="login-cat-sprite h-full w-full" />
+            <canvas ref={faceRef} width={543} height={724} className="login-cat-face" aria-hidden="true" />
+            <svg className="login-cat-pounce-claws" viewBox="0 0 150 200" aria-hidden="true">
+              <path d="M133 128 Q139 122 145 121 M135 133 Q141 128 147 127 M134 138 Q140 134 146 133" />
+            </svg>
+          </div>
           <div className="login-cat-sleep h-full w-full" />
-          <span className="login-cat-sleep-bubble" aria-hidden="true" />
+          <div className="login-cat-sleep-ear h-full w-full" />
+          <svg className="login-cat-sleep-bubble" viewBox="0 0 28 18" aria-hidden="true">
+            <path d="M1 9 C6 8 8 2 17 2 C23 2 27 6 27 10 C27 15 23 17 17 16 C8 15 6 10 1 9 Z" />
+          </svg>
+          <div className="login-cat-bubble-pop" aria-hidden="true"><i /><i /><i /><i /></div>
           <span className="login-cat-zzz" aria-hidden="true">Zzz</span>
+          <div className="login-cat-dizzy-birds" aria-hidden="true"><span>🐤</span><span>🐦</span><span>🐤</span></div>
         </div>
       </div>
       <div ref={birdRef} aria-hidden="true" className="login-bird pointer-events-none fixed left-0 top-0 z-0 h-8 w-8 opacity-0">

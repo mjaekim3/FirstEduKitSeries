@@ -5,6 +5,7 @@ import LoginPage from "./page";
 
 const { signIn } = vi.hoisted(() => ({ signIn: vi.fn() }));
 vi.mock("next-auth/react", () => ({ signIn }));
+vi.mock("./Neoburie", () => ({ default: () => null }));
 
 afterEach(() => {
   cleanup();
