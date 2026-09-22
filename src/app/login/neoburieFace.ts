@@ -1,4 +1,3 @@
-import { drawMesh } from "./neoburieMesh"
 import { createCarePainter } from "./neoburieCare"
 
 // Coordinates belong to the original 543 × 724 sprite frame, before mirroring.
@@ -13,11 +12,10 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   source.width = 543
   source.height = 724
   const sourceContext = source.getContext("2d", { willReadFrequently: true })!
-  const idle = new Image()
   const held = new Image()
-  idle.src = "/neoburie-pixel-idle.png"
+  const stalk = new Image()
   held.src = "/neoburie-pixel-held.png"
-  let cached: string | undefined
+  stalk.src = "/neoburie-stalk-v5.png"
   let pixels: ImageData | undefined
 
   return (mode: "stalk" | "pounce" | "land" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0) => {
@@ -26,37 +24,66 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
     canvas.style.transformOrigin = ""
     canvas.dataset.atlas = "false"
     if (!mode) return false
+    if (mode === "stalk") {
+      if (!stalk.complete || !stalk.naturalWidth) return false
+      // These are separately drawn crouching poses. Reverse the second half
+      // so the hips sway back without deforming the body or snapping at loop end.
+      const sequence = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1]
+      const frame = sequence[Math.min(sequence.length - 1, Math.floor(phase * sequence.length))]
+      output.drawImage(stalk, frame * 543, 0, 543, 724, 0, 0, 543, 724)
+      for (const [cx, cy] of [[421, 456], [492, 455]]) {
+        if (focus > 0) {
+          output.save()
+          output.globalAlpha = focus * .82
+          output.beginPath()
+          output.ellipse(cx + lookX, cy + lookY, 5 + focus * 4, 7 + focus * 5, 0, 0, Math.PI * 2)
+          output.fillStyle = "#18272a"
+          output.fill()
+          output.beginPath()
+          output.ellipse(cx - 4 + lookX, cy - 5 + lookY, 2, 2.5, 0, 0, Math.PI * 2)
+          output.fillStyle = "#fffdf5"
+          output.fill()
+          output.restore()
+        }
+        if (phase > .62) {
+          const sparkle = Math.sin(time / 135) ** 2 * Math.min(1, (phase - .62) / .18)
+          const r = 2 + sparkle * 4
+          output.beginPath()
+          output.moveTo(cx - 4, cy - 6 - r)
+          output.lineTo(cx - 1, cy - 9)
+          output.lineTo(cx - 4 + r, cy - 6)
+          output.lineTo(cx - 1, cy - 3)
+          output.lineTo(cx - 4, cy - 6 + r)
+          output.lineTo(cx - 7, cy - 3)
+          output.lineTo(cx - 4 - r, cy - 6)
+          output.lineTo(cx - 7, cy - 9)
+          output.closePath()
+          output.fillStyle = "#fffce5"
+          output.fill()
+        }
+      }
+      return true
+    }
     if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") {
       if (paintCare(mode, time, phase)) return true
       if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") return false
     }
-    const sourceMode = mode === "dizzy" ? "dizzy" : "stalk"
-    const image = sourceMode === "dizzy" ? held : idle
-    if (!image.complete || !image.naturalWidth) return false
-    if (cached !== sourceMode) {
+    if (!held.complete || !held.naturalWidth) return false
+    if (!pixels) {
       sourceContext.clearRect(0, 0, 543, 724)
-      sourceContext.drawImage(image, sourceMode === "dizzy" ? 0 : 1629, 0, 543, 724, 0, 0, 543, 724)
+      sourceContext.drawImage(held, 0, 0, 543, 724, 0, 0, 543, 724)
       pixels = sourceContext.getImageData(0, 0, 543, 724)
-      cached = sourceMode
     }
     context.drawImage(source, 0, 0)
-    const original = pixels!.data
-    const eyes = sourceMode === "dizzy" ? [[354, 216, 34, 28], [449, 215, 29, 28]]
-      : [[370, 355, 29, 27], [459, 352, 25, 26]]
-    for (const [cx, cy, rx, ry] of (mode === "stalk" || mode === "dizzy" ? eyes : [])) {
+    const original = pixels.data
+    const eyes = [[354, 216, 34, 28], [449, 215, 29, 28]]
+    for (const [cx, cy, rx, ry] of eyes) {
       const left = cx - rx, top = cy - ry, width = rx * 2, height = ry * 2
       const patch = context.createImageData(width, height)
       for (let py = 0; py < height; py++) for (let px = 0; px < width; px++) {
         const dx = px - rx, dy = py - ry
         const radius = Math.hypot(dx / rx, dy / ry)
-        const weight = Math.max(0, 1 - radius * radius)
-        let sx = left + px, sy = top + py
-        if (sourceMode === "stalk") {
-          // Warp the actual pupil and highlight, leaving the eye perimeter fixed.
-          const scale = 1 + focus * .75 * weight
-          sx = Math.round(cx + (dx - lookX * weight) / scale)
-          sy = Math.round(cy + (dy - lookY * weight) / scale)
-        }
+        const sx = left + px, sy = top + py
         const index = (sy * 543 + sx) * 4
         const dest = (py * width + px) * 4
         for (let channel = 0; channel < 4; channel++) {
@@ -106,24 +133,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       context.lineWidth = 2
       context.stroke()
     }
-    if (mode === "stalk" && phase > .78) {
-      const sparkle = Math.sin(Math.min(1, (phase - .78) / .22) * Math.PI * 2) ** 2
-      for (const [cx, cy] of [[373, 348], [461, 345]]) {
-        const r = 4 + sparkle * 13
-        context.beginPath(); context.moveTo(cx, cy - r); context.lineTo(cx + 3, cy - 3)
-        context.lineTo(cx + r * .7, cy); context.lineTo(cx + 3, cy + 3)
-        context.lineTo(cx, cy + r); context.lineTo(cx - 3, cy + 3)
-        context.lineTo(cx - r * .7, cy); context.lineTo(cx - 3, cy - 3); context.closePath()
-        context.fillStyle = "#fffce5"; context.fill()
-      }
-    }
-    if (mode !== "stalk") output.drawImage(painted, 0, 0)
-    else drawMesh(output, painted, (x, y) => {
-      const front = Math.max(0, Math.min(1, (x - 200) / 140))
-      const rump = (1 - front) * Math.max(0, Math.min(1, (600 - y) / 180))
-      return [x + Math.sin(time / 90) * 7 * rump,
-        y + Math.max(0, 610 - y) * (.06 + .13 * front) + Math.cos(time / 90) * 3 * rump]
-    })
+    output.drawImage(painted, 0, 0)
     return true
   }
 }

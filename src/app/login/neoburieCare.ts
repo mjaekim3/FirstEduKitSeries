@@ -2,7 +2,8 @@ import { CAT_TIMING, poseTimeline, type CareMode, type Pose } from "./neoburieTi
 
 type Frame = { x: number; y: number; width: number; height: number; area: number }
 type Sheet = { image: HTMLImageElement; frames?: Frame[] }
-const RENDER_SCALE = 1.32617
+// Rest and wake share one fixed scale in the 543 × 724 walking-frame coordinates.
+const SHEET_SCALE = { rest: 1.16, groom: 1.16, jump: 1.08, wake: 1.16 }
 
 // Find complete sprites rather than cutting a paw at a nominal grid boundary.
 function measureFrames(image: HTMLImageElement): Frame[] {
@@ -39,14 +40,14 @@ function measureFrames(image: HTMLImageElement): Frame[] {
 }
 
 export function createCarePainter(canvas: HTMLCanvasElement) {
-  const paths = { rest: "/neoburie-rest-v3.png", groom: "/neoburie-groom-v3.png", jump: "/neoburie-jump-v3.png", idle: "/neoburie-pixel-idle.png", sleep: "/neoburie-pixel-sleep-v2.png" }
+  const paths = { rest: "/neoburie-rest-v4.png", groom: "/neoburie-groom-v4.png", jump: "/neoburie-jump-v4.png", wake: "/neoburie-wake-v4.png", yawnHalf: "/neoburie-yawn-seated-half-v2.png", yawnOpen: "/neoburie-yawn-seated-open-v2.png", idle: "/neoburie-pixel-idle.png", walk: "/neoburie-pixel-walk-v3.png", sleep: "/neoburie-pixel-sleep-v2.png" }
   const sheets = Object.fromEntries(Object.entries(paths).map(([key, src]) => { const image = new Image(); image.src = src; return [key, { image }] })) as Record<Pose["sheet"], Sheet>
   const context = canvas.getContext("2d")!
   let ready = false
   return (mode: CareMode, _time: number, phase: number) => {
     if (!ready) {
       if (Object.values(sheets).some(({ image }) => !image.complete || !image.naturalWidth)) return false
-      for (const name of ["rest", "groom", "jump"] as const) {
+      for (const name of ["rest", "groom", "jump", "wake"] as const) {
         sheets[name].frames = measureFrames(sheets[name].image)
         if (sheets[name].frames!.length !== 6) return false
       }
@@ -57,34 +58,49 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
     let index = keys.length - 1
     while (index > 0 && keys[index].at > time) index--
     const current = keys[index], previous = keys[Math.max(0, index - 1)]
-    const duration = mode === "pounce" ? (index === 3 ? 40 : 55) : 100
+    const duration = mode === "pounce" ? 1 : mode === "settle" ? 200 : 90
     const fraction = Math.min(1, Math.max(0, (time - current.at) / duration))
     const mix = fraction * fraction * (3 - 2 * fraction)
-    const ground = mode === "settle" ? 610 - 39 * Math.min(1, elapsed / 2200)
-      : mode === "wake" ? 571 + 39 * Math.min(1, Math.max(0, (elapsed - 1100) / 700)) : 610
+    // Keep the same ground line from standing through curled sleep. The sleep
+    // sprite's native baseline is 39px above the standing/walking baseline.
+    const ground = 610
     canvas.dataset.atlas = "true"
     canvas.style.transformOrigin = `50% ${ground / 724 * 100}%`
     const draw = (pose: Pose, opacity: number) => {
       const sheet = sheets[pose.sheet]
       context.save(); context.globalAlpha = opacity
-      if (pose.sheet === "idle" || pose.sheet === "sleep") {
+      if (pose.sheet === "idle" || pose.sheet === "walk" || pose.sheet === "sleep") {
         // Exact originals at both ends of the sleep/wake sequence.
-        const size = 1 / RENDER_SCALE
-        context.translate(271.5, ground); context.scale("mirror" in pose && pose.mirror ? -size : size, size)
+        context.translate(271.5, ground); context.scale(pose.mirror ? -1 : 1, 1)
         const baseline = pose.sheet === "sleep" ? 571 : 610
         context.drawImage(sheet.image, pose.frame * 543, 0, 543, 724, -271.5, -baseline, 543, 724)
+      } else if (pose.sheet === "yawnHalf" || pose.sheet === "yawnOpen") {
+        // The seated silhouette matches the grooming pose at one fixed scale.
+        // Anchor the visible paws, not the transparent image edge, to ground.
+        const scale = 0.47
+        context.translate(271.5, ground)
+        context.scale(pose.mirror ? -1 : 1, 1)
+        context.drawImage(sheet.image, -638 * scale, -1187 * scale, sheet.image.naturalWidth * scale, sheet.image.naturalHeight * scale)
       } else {
         const frame = sheet.frames![pose.frame]
-        const scale = Math.sqrt(83582 / frame.area)
-        context.drawImage(sheet.image, frame.x, frame.y, frame.width, frame.height, (543 - frame.width * scale) / 2, ground - frame.height * scale, frame.width * scale, frame.height * scale)
+        const scale = SHEET_SCALE[pose.sheet] * 1536 / sheet.image.naturalWidth
+        context.translate(271.5, ground)
+        context.scale(pose.mirror ? -1 : 1, 1)
+        context.drawImage(sheet.image, frame.x, frame.y, frame.width, frame.height, -frame.width * scale / 2, -frame.height * scale, frame.width * scale, frame.height * scale)
       }
       context.restore()
     }
     context.clearRect(0, 0, 543, 724)
-    context.globalCompositeOperation = "lighter"
-    if (mix < 1 && index > 0) draw(previous.pose, 1 - mix)
-    draw(current.pose, index === 0 ? 1 : mix)
-    context.globalCompositeOperation = "source-over"
+    if (mode === "settle" || mode === "wake") {
+      // A whole-body crossfade looks like the cat changes size. Let the longer
+      // half-lidded and closed-eye frames provide the gradual eye transition.
+      draw(current.pose, 1)
+    } else {
+      context.globalCompositeOperation = "lighter"
+      if (mix < 1 && index > 0) draw(previous.pose, 1 - mix)
+      draw(current.pose, index === 0 ? 1 : mix)
+      context.globalCompositeOperation = "source-over"
+    }
     return true
   }
 }
