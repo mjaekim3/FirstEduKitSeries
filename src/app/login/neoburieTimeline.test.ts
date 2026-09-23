@@ -36,3 +36,9 @@ it("reaches the stretch quickly and holds the full extension", () => {
     .toEqual([[1350, "wake", 1], [1550, "wake", 2], [2250, "wake", 3], [3650, "wake", 4], [4250, "wake", 5], [4900, "walk", 0]])
   expect(keys.at(-1)?.at).toBeLessThan(5300)
 })
+
+it("uses only complete-paw frames during the vertical jump", () => {
+  const { keys } = poseTimeline("pounce", 940)
+  expect(keys.map(key => [key.at, key.pose.frame]))
+    .toEqual([[0, 0], [150, 1], [300, 1], [470, 4], [610, 4], [790, 5]])
+})

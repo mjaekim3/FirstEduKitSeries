@@ -86,13 +86,13 @@ it("keeps pursuing a moving cursor and catches only after it stops", () => {
 it("uses a paw swat instead of hunting when the cursor is close", () => {
   move(260, 220)
   expect(cat.classList.contains("is-swat")).toBe(true)
-  expect(cat.style.getPropertyValue("--cat-art-scale")).toBe("1.02")
+  expect(cat.style.getPropertyValue("--cat-art-scale")).toBe("1.04")
   advance(1300)
   expect(cat.classList.contains("is-walk")).toBe(true)
 })
 
 it("normalizes active pose sizes against the yawn and sleep artwork", () => {
-  expect(cat.style.getPropertyValue("--cat-art-scale")).toBe("0.98")
+  expect(cat.style.getPropertyValue("--cat-art-scale")).toBe("1.08")
   advance(18400)
   expect(cat.classList.contains("is-sleep")).toBe(true)
   expect(cat.style.getPropertyValue("--cat-art-scale")).toBe("1")

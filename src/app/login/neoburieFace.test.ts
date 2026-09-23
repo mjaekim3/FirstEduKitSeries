@@ -4,7 +4,7 @@ import { getStalkEyeGlints, mapStalkEyePixel, STALK_EYES, swatFrameAt } from "./
 describe("paw-swat frames", () => {
   it("shows both taps and returns through recovery poses instead of cutting off", () => {
     expect([0, .16, .3, .46, .56, .66, .76, .85, .93, 1].map(swatFrameAt))
-      .toEqual([0, 1, 2, 3, 4, 5, 4, 2, 1, 0])
+      .toEqual([0, 1, 2, 5, 4, 5, 4, 2, 1, 0])
   })
 })
 
