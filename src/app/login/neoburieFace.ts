@@ -33,6 +33,11 @@ export const STALK_EYES: readonly StalkEyeRegion[] = [
   { cx: 486, cy: 486, rx: 17, ry: 20 },
 ]
 
+export const STALK_FACE_SPARKLE_MASKS: readonly StalkEyeRegion[] = [
+  { cx: 379, cy: 487, rx: 20, ry: 31 },
+  { cx: 529, cy: 486, rx: 14, ry: 30 },
+]
+
 export function stalkFrameAt(phase: number) {
   return Math.min(5, Math.floor(Math.max(0, phase) * 6))
 }
@@ -137,11 +142,13 @@ function paintStalkEyes(
     eyeContext.putImageData(patch, left, top)
   }
 
-  // Remove the generated large eyes and external starbursts with the clean
-  // first-frame artwork before compositing the locally warped eye pixels.
+  // Restore clean face artwork over the generated eye area and the two
+  // decorative starbursts beside the cheeks. The replacement glints below
+  // are clipped back inside the eyes.
   output.save()
   output.beginPath()
   for (const eye of STALK_EYES) output.ellipse(eye.cx, eye.cy, eye.rx + 10, eye.ry + 8, 0, 0, Math.PI * 2)
+  for (const mask of STALK_FACE_SPARKLE_MASKS) output.ellipse(mask.cx, mask.cy, mask.rx, mask.ry, 0, 0, Math.PI * 2)
   output.clip()
   output.drawImage(stalk, 0, 0, 543, 724, 0, 0, 543, 724)
   output.restore()
