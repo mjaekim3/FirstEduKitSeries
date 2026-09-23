@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints, getStalkPupilCovers, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, swatFrameAt } from "./neoburieFace"
+import path from "node:path"
+import sharp from "sharp"
+import { getStalkEyeGlints, getStalkPupilCovers, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, STALK_SHEET_PATH, swatFrameAt } from "./neoburieFace"
 
 describe("stalk frames", () => {
   it("keeps the complete six-step hunting progression", () => {
@@ -40,6 +42,25 @@ describe("stalk pupil dilation", () => {
 })
 
 describe("stalk eye glints", () => {
+  it("uses a sprite whose face-side pixels stay clean through every hunting frame", async () => {
+    expect(STALK_SHEET_PATH).toBe("/neoburie-stalk-v15-clean.png")
+    const { data, info } = await sharp(path.join(process.cwd(), "public", STALK_SHEET_PATH.slice(1)))
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+    const patches = [
+      { left: 350, top: 445, width: 50, height: 82 },
+      { left: 510, top: 445, width: 33, height: 82 },
+    ]
+
+    for (let frame = 1; frame < 6; frame++) for (const patch of patches) {
+      for (let y = patch.top; y < patch.top + patch.height; y++) for (let x = patch.left; x < patch.left + patch.width; x++) {
+        const clean = (y * info.width + x) * info.channels
+        const animated = (y * info.width + frame * 543 + x) * info.channels
+        expect(data.subarray(animated, animated + info.channels)).toEqual(data.subarray(clean, clean + info.channels))
+      }
+    }
+  })
+
   it("cleans only the two sparkles beside the face, outside the eye glint regions", () => {
     expect(STALK_FACE_SPARKLE_MASKS).toHaveLength(2)
     expect(STALK_FACE_SPARKLE_MASKS[0].cx).toBeLessThan(STALK_EYES[0].cx - STALK_EYES[0].rx)
