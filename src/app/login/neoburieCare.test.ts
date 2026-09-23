@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { JUMP_SHEET_PATH, MEASURED_FRAME_SHEETS } from "./neoburieCare"
+import { getPoseBlendDuration, JUMP_SHEET_PATH, MEASURED_FRAME_SHEETS } from "./neoburieCare"
 
 describe("cursor-grab jump artwork", () => {
   it("uses the historical sheet where both front paws gather around the cursor", () => {
-    expect(JUMP_SHEET_PATH).toBe("/neoburie-jump-v4.png")
+    expect(JUMP_SHEET_PATH).toBe("/neoburie-jump-v4-clean.png")
     expect(MEASURED_FRAME_SHEETS).toContain("jump")
+  })
+
+  it("switches jump poses cleanly without drawing the previous frame as a ghost", () => {
+    expect(getPoseBlendDuration("pounce")).toBe(0)
+    expect(getPoseBlendDuration("groom")).toBeGreaterThan(0)
   })
 })
