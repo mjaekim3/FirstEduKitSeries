@@ -26,11 +26,13 @@ export function poseTimeline(mode: CareMode, elapsed: number): { keys: PoseKey[]
   if (mode === "wake") return { time: elapsed, keys: [
     { at: 0, pose: asleep }, { at: 200, pose: rest(5) },
     { at: 500, pose: rest(4) }, { at: 800, pose: rest(3) },
-    { at: 1100, pose: wake(0) }, { at: 1350, pose: wake(1) },
-    // Reach the stretch promptly, then let the original full extension linger.
-    { at: 1550, pose: wake(2) }, { at: 2250, pose: wake(3) },
-    { at: 3650, pose: wake(4) }, { at: 4250, pose: wake(5) },
-    { at: 4900, pose: standing },
+    { at: 1100, pose: wake(0) }, { at: 1400, pose: wake(1) },
+    { at: 1700, pose: wake(2) }, { at: 2000, pose: wake(3) },
+    { at: 2300, pose: wake(4) }, { at: 2600, pose: wake(5) },
+    { at: 2900, pose: wake(6) }, { at: 3200, pose: wake(7) },
+    { at: 3500, pose: wake(8) }, { at: 3900, pose: wake(9) },
+    { at: 4300, pose: wake(10) }, { at: 4700, pose: wake(11) },
+    { at: 5100, pose: standing },
   ] }
   if (mode === "groom") {
     if (elapsed < 450) return { time: elapsed, keys: [{ at: 0, pose: standing }, { at: 350, pose: groom(0) }] }

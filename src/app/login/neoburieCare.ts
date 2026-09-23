@@ -3,13 +3,14 @@ import { CAT_TIMING, poseTimeline, type CareMode, type Pose } from "./neoburieTi
 type Frame = { x: number; y: number; width: number; height: number; area: number }
 type Sheet = { image: HTMLImageElement; frames?: Frame[] }
 // Rest and wake share one fixed scale in the 543 × 724 walking-frame coordinates.
-const SHEET_SCALE = { rest: 1.16, groom: 1.16, jump: 1.08, wake: 1.16 }
+const SHEET_SCALE = { rest: 1.16, groom: 1.16, jump: 1.08, wake: 1.45 }
 export const JUMP_SHEET_PATH = "/neoburie-jump-v4-clean.png"
 export const MEASURED_FRAME_SHEETS = ["rest", "groom", "jump", "wake"] as const
+export const FRAME_COUNTS = { rest: 6, groom: 6, jump: 6, wake: 12 } as const
+const FRAME_COLUMNS = { rest: 3, groom: 3, jump: 3, wake: 4 } as const
 
 export function getPoseBlendDuration(mode: CareMode) {
-  if (mode === "pounce") return 0
-  if (mode === "wake") return 220
+  if (mode === "pounce" || mode === "wake") return 0
   return mode === "settle" ? 200 : 90
 }
 
@@ -18,7 +19,7 @@ export function shouldBlendPoseTransitions(mode: CareMode) {
 }
 
 // Find complete sprites rather than cutting a paw at a nominal grid boundary.
-function measureFrames(image: HTMLImageElement): Frame[] {
+function measureFrames(image: HTMLImageElement, expected: number, columns: number): Frame[] {
   const canvas = document.createElement("canvas")
   canvas.width = image.naturalWidth; canvas.height = image.naturalHeight
   const context = canvas.getContext("2d", { willReadFrequently: true })!
@@ -47,12 +48,14 @@ function measureFrames(image: HTMLImageElement): Frame[] {
     for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) area += data[(y * width + x) * 4 + 3] / 255
     groups.push({ x: left, y: top, width: right - left + 1, height: bottom - top + 1, area })
   }
-  const main = groups.sort((a, b) => b.area - a.area).slice(0, 6).sort((a, b) => a.y + a.height / 2 - b.y - b.height / 2)
-  return [...main.slice(0, 3).sort((a, b) => a.x - b.x), ...main.slice(3).sort((a, b) => a.x - b.x)]
+  const main = groups.sort((a, b) => b.area - a.area).slice(0, expected).sort((a, b) => a.y + a.height / 2 - b.y - b.height / 2)
+  const ordered: Frame[] = []
+  for (let row = 0; row < expected; row += columns) ordered.push(...main.slice(row, row + columns).sort((a, b) => a.x - b.x))
+  return ordered
 }
 
 export function createCarePainter(canvas: HTMLCanvasElement) {
-  const paths = { rest: "/neoburie-rest-v4.png", groom: "/neoburie-groom-v4.png", jump: JUMP_SHEET_PATH, wake: "/neoburie-wake-v4.png", yawnHalf: "/neoburie-yawn-seated-half-v2.png", yawnOpen: "/neoburie-yawn-seated-open-v2.png", idle: "/neoburie-pixel-idle.png", walk: "/neoburie-pixel-walk-v3.png", sleep: "/neoburie-pixel-sleep-v2.png" }
+  const paths = { rest: "/neoburie-rest-v4.png", groom: "/neoburie-groom-v4.png", jump: JUMP_SHEET_PATH, wake: "/neoburie-wake-v5-12f-clean.png", yawnHalf: "/neoburie-yawn-seated-half-v2.png", yawnOpen: "/neoburie-yawn-seated-open-v2.png", idle: "/neoburie-pixel-idle.png", walk: "/neoburie-pixel-walk-v3.png", sleep: "/neoburie-pixel-sleep-v2.png" }
   const sheets = Object.fromEntries(Object.entries(paths).map(([key, src]) => { const image = new Image(); image.src = src; return [key, { image }] })) as Record<Pose["sheet"], Sheet>
   const context = canvas.getContext("2d")!
   let ready = false
@@ -60,8 +63,8 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
     if (!ready) {
       if (Object.values(sheets).some(({ image }) => !image.complete || !image.naturalWidth)) return false
       for (const name of MEASURED_FRAME_SHEETS) {
-        sheets[name].frames = measureFrames(sheets[name].image)
-        if (sheets[name].frames!.length !== 6) return false
+        sheets[name].frames = measureFrames(sheets[name].image, FRAME_COUNTS[name], FRAME_COLUMNS[name])
+        if (sheets[name].frames!.length !== FRAME_COUNTS[name]) return false
       }
       ready = true
     }
