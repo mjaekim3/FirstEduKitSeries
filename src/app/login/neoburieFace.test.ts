@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 import { getStalkEyeGlints, mapStalkEyePixel, stalkFrameAt, STALK_EYES, swatFrameAt } from "./neoburieFace"
 
 describe("stalk frames", () => {
-  it("holds the final complete crouch instead of showing the clipped last frame", () => {
+  it("keeps the complete six-step hunting progression", () => {
     expect([0, .19, .38, .58, .78, 1].map(stalkFrameAt))
-      .toEqual([0, 1, 2, 3, 4, 4])
+      .toEqual([0, 1, 2, 3, 4, 5])
   })
 })
 
