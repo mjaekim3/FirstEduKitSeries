@@ -78,13 +78,13 @@ export function getStalkEyeGlints(phase: number, lookX = 0, lookY = 0): StalkEye
   if (phase < .76) return []
 
   const rise = Math.min(1, Math.max(0, (phase - .76) / .18))
-  const verticalRadius = 8 + 4 * rise
-  const alpha = .72 + .28 * rise
+  const verticalRadius = 10 + 5 * rise
+  const alpha = .78 + .22 * rise
 
   return STALK_EYES.map(eye => ({
     cx: eye.cx + lookX,
     cy: eye.cy + lookY,
-    horizontalRadius: Math.max(eye.rx * .34, verticalRadius * .58),
+    horizontalRadius: Math.max(eye.rx * .42, verticalRadius * .62),
     verticalRadius,
     alpha,
     color: "#ffffff",
