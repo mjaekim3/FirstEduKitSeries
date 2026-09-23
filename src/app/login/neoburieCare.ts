@@ -9,7 +9,12 @@ export const MEASURED_FRAME_SHEETS = ["rest", "groom", "jump", "wake"] as const
 
 export function getPoseBlendDuration(mode: CareMode) {
   if (mode === "pounce") return 0
+  if (mode === "wake") return 220
   return mode === "settle" ? 200 : 90
+}
+
+export function shouldBlendPoseTransitions(mode: CareMode) {
+  return mode !== "settle" && getPoseBlendDuration(mode) > 0
 }
 
 // Find complete sprites rather than cutting a paw at a nominal grid boundary.
@@ -98,9 +103,9 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
       context.restore()
     }
     context.clearRect(0, 0, 543, 724)
-    if (mode === "settle" || mode === "wake") {
-      // A whole-body crossfade looks like the cat changes size. Let the longer
-      // half-lidded and closed-eye frames provide the gradual eye transition.
+    if (!shouldBlendPoseTransitions(mode)) {
+      // During settling, the longer half-lidded frames already provide the
+      // gradual eye transition without a whole-body double image.
       draw(current.pose, 1)
     } else {
       context.globalCompositeOperation = "lighter"
