@@ -20,7 +20,7 @@ describe("paw-swat frames", () => {
 describe("held and dizzy artwork", () => {
   it("uses matching redrawn sprite sheets instead of modifying the old held face", () => {
     expect(HELD_SHEET_PATH).toBe("/neoburie-held-v2-4f-clean.png")
-    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v4-8f-clean.png")
+    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v5-xeyes-8f-clean.png")
     expect(HELD_FRAME_COUNT).toBe(4)
     expect(DIZZY_FRAME_COUNT).toBe(8)
   })
@@ -50,6 +50,30 @@ describe("held and dizzy artwork", () => {
         if (x >= 10 && x < 533 && y >= 14 && y < 710) continue
         expect(data[(y * info.width + left + x) * info.channels + 3]).toBe(0)
       }
+    }
+  })
+
+  it("finishes every tail with a rounded tip instead of a clipped flat edge", async () => {
+    const { data, info } = await sharp(path.join(process.cwd(), "public", DIZZY_SHEET_PATH.slice(1)))
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+
+    for (let frame = 0; frame < DIZZY_FRAME_COUNT; frame++) {
+      let lowestRow = -1
+      let lowestRowPixels = 0
+      for (let y = 0; y < info.height; y++) {
+        let opaquePixels = 0
+        for (let x = 0; x < 543; x++) {
+          if (data[(y * info.width + frame * 543 + x) * info.channels + 3] > 40) opaquePixels++
+        }
+        if (opaquePixels) {
+          lowestRow = y
+          lowestRowPixels = opaquePixels
+        }
+      }
+      expect(lowestRow).toBeLessThan(710)
+      expect(lowestRowPixels).toBeLessThanOrEqual(30)
     }
   })
 })
