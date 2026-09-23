@@ -80,8 +80,9 @@ describe("stalk eye glints", () => {
       const eye = STALK_EYES[index]
       expect(glint.clip).toEqual(eye)
       expect(glint.verticalRadius).toBeGreaterThan(glint.horizontalRadius)
-      expect(glint.verticalRadius).toBeGreaterThanOrEqual(eye.ry * .7)
-      expect(glint.horizontalRadius).toBeGreaterThanOrEqual(eye.rx * .4)
+      expect(glint.verticalRadius).toBeGreaterThanOrEqual(eye.ry * .6)
+      expect(glint.verticalRadius).toBeLessThan(eye.ry * .7)
+      expect(glint.horizontalRadius).toBeLessThanOrEqual(8)
       expect(glint.alpha).toBe(1)
       expect(glint.outline).toBe(false)
       expect(glint.cx).toBe(eye.cx)
