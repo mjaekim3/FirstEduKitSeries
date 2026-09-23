@@ -20,7 +20,7 @@ describe("paw-swat frames", () => {
 describe("held and dizzy artwork", () => {
   it("uses matching redrawn sprite sheets instead of modifying the old held face", () => {
     expect(HELD_SHEET_PATH).toBe("/neoburie-held-v2-4f-clean.png")
-    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v6-closed-eyes-8f-clean.png")
+    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v7-redrawn-groom-eyes-8f.png")
     expect(HELD_FRAME_COUNT).toBe(4)
     expect(DIZZY_FRAME_COUNT).toBe(8)
   })
