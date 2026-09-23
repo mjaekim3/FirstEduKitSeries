@@ -4,7 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { act, cleanup, render } from "@testing-library/react"
 import Neoburie from "./Neoburie"
 
-vi.mock("./neoburieFace", () => ({ createFacePainter: () => () => false }))
+vi.mock("./neoburieFace", () => ({
+  createFacePainter: () => () => false,
+  HELD_SHEET_PATH: "/neoburie-held-v2-4f-clean.png",
+}))
 let now = 0
 let nextId = 0
 const callbacks = new Map<number, FrameRequestCallback>()
@@ -96,4 +99,10 @@ it("normalizes active pose sizes against the yawn and sleep artwork", () => {
   advance(18400)
   expect(cat.classList.contains("is-sleep")).toBe(true)
   expect(cat.style.getPropertyValue("--cat-art-scale")).toBe("1")
+})
+
+it("uses the redrawn held artwork and does not layer emoji birds over dizzy frames", () => {
+  expect(cat.style.getPropertyValue("--held-sprite")).toContain("neoburie-held-v2-4f-clean.png")
+  expect(cat.querySelector(".login-cat-dizzy-birds")).toBeNull()
+  expect(cat.textContent).not.toMatch(/[🐤🐦]/u)
 })

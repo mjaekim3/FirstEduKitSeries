@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import path from "node:path"
 import sharp from "sharp"
-import { getStalkEyeGlints, getStalkPupilCovers, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, STALK_SHEET_PATH, swatFrameAt } from "./neoburieFace"
+import { DIZZY_FRAME_COUNT, DIZZY_SHEET_PATH, dizzyFrameAt, getStalkEyeGlints, getStalkPupilCovers, HELD_SHEET_PATH, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, STALK_SHEET_PATH, swatFrameAt } from "./neoburieFace"
 
 describe("stalk frames", () => {
   it("keeps the complete six-step hunting progression", () => {
@@ -14,6 +14,20 @@ describe("paw-swat frames", () => {
   it("shows both taps and returns through recovery poses instead of cutting off", () => {
     expect([0, .16, .3, .46, .56, .66, .76, .85, .93, 1].map(swatFrameAt))
       .toEqual([0, 1, 2, 5, 4, 5, 4, 2, 1, 0])
+  })
+})
+
+describe("held and dizzy artwork", () => {
+  it("uses matching redrawn sprite sheets instead of modifying the old held face", () => {
+    expect(HELD_SHEET_PATH).toBe("/neoburie-held-v2-4f-clean.png")
+    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v2-8f-clean.png")
+    expect(DIZZY_FRAME_COUNT).toBe(8)
+  })
+
+  it("cycles every dizzy frame so the spiral eyes and overhead birds move together", () => {
+    expect([0, 150, 300, 450, 600, 750, 900, 1050].map(dizzyFrameAt))
+      .toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+    expect(dizzyFrameAt(1200)).toBe(0)
   })
 })
 
