@@ -46,8 +46,8 @@ export function poseTimeline(mode: CareMode, elapsed: number): { keys: PoseKey[]
   }
   if (mode === "land") return { time: elapsed, keys: [{ at: 0, pose: jump(5) }, { at: 220, pose: standing }] }
   return { time: elapsed, keys: [
-    { at: 0, pose: jump(0) }, { at: 100, pose: jump(1) },
-    { at: 225, pose: jump(2) }, { at: 325, pose: jump(3) },
-    { at: 455, pose: jump(4) }, { at: 655, pose: jump(5) },
+    { at: 0, pose: jump(0) }, { at: 150, pose: jump(1) },
+    { at: 300, pose: jump(1) }, { at: 470, pose: jump(4) },
+    { at: 610, pose: jump(4) }, { at: 790, pose: jump(5) },
   ] }
 }

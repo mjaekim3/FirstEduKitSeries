@@ -27,7 +27,7 @@ export function swatFrameAt(phase: number) {
   if (phase < .12) return 0
   if (phase < .24) return 1
   if (phase < .38) return 2
-  if (phase < .5) return 3
+  if (phase < .5) return 5
   if (phase < .6) return 4
   if (phase < .7) return 5
   if (phase < .8) return 4

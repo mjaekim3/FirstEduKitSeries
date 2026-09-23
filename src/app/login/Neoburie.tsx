@@ -3,13 +3,14 @@
 import { useEffect, useRef } from "react"
 import { createFacePainter } from "./neoburieFace"
 import { CAT_TIMING, poseTimeline } from "./neoburieTimeline"
+import { pounceMotion } from "./neoburieMotion"
 
 type CatMode = "walk" | "chase" | "sleep" | "settle" | "wake" | "groom" | "stalk" | "swat" | "hunt" | "pounce" | "land" | "held" | "dizzy" | "drop"
 
 const CAT_ART_SCALE: Record<CatMode, number> = {
-  walk: .98, chase: .98, hunt: .98,
+  walk: 1.08, chase: 1.08, hunt: 1.08,
   sleep: 1, settle: 1, wake: 1, groom: 1,
-  stalk: 1.08, swat: 1.02,
+  stalk: 1.08, swat: 1.04,
   pounce: 1.16, land: 1.16,
   held: .93, dizzy: .93, drop: .93,
 }
@@ -323,18 +324,16 @@ export default function Neoburie() {
         if (time - cursorMovedAt >= 220 && distance < 100) {
           pounceStart = time
           jumpFrom = x
-          jumpTo = clamp(x + Math.max(-45, Math.min(45, nextX - x)), bounds().maxX)
-          jumpHeight = Math.min(Math.max(135, y + cat.offsetHeight * .82 - cursorY), 220, Math.max(0, y + 24))
+          jumpTo = clamp(x + Math.max(-22, Math.min(22, nextX - x)), bounds().maxX)
+          jumpHeight = Math.min(Math.max(180, y + cat.offsetHeight * .9 - cursorY), 260)
           setMode("pounce")
           modeUntil = time + CAT_TIMING.jump
         }
       } else if (mode === "pounce") {
         const progress = Math.min(1, (time - pounceStart) / CAT_TIMING.jump)
-        // Feet stay planted during compression; only the hind-leg push starts the arc.
-        const flight = Math.max(0, Math.min(1, (progress - .14) / .80))
-        const lift = 4 * jumpHeight * flight * (1 - flight)
-        const travel = flight < .48 ? .86 * (1 - (1 - flight / .48) ** 2) : .86 + .14 * (flight - .48) / .52
-        x = jumpFrom + (jumpTo - jumpFrom) * travel
+        const motion = pounceMotion(progress, jumpHeight, jumpTo - jumpFrom)
+        const lift = motion.lift
+        x = jumpFrom + motion.travel
         cat.style.setProperty("--cat-lift", `${-lift}px`)
         draw()
         if (time >= modeUntil) {
