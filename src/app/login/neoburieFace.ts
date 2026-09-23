@@ -11,15 +11,36 @@ export type StalkEyeGlint = {
   outline: false
 }
 
+export type StalkEye = {
+  cx: number
+  cy: number
+  eyeRadiusX: number
+  eyeRadiusY: number
+  pupilCx: number
+  pupilCy: number
+  pupilRadiusX: number
+  pupilRadiusY: number
+}
+
+export function getStalkEyes(phase: number): StalkEye[] {
+  const progress = Math.min(1, Math.max(0, (phase - .1) / .7))
+  const dilation = progress * progress * (3 - 2 * progress)
+
+  return [
+    { cx: 420, cy: 487, eyeRadiusX: 20, eyeRadiusY: 21, pupilCx: 420, pupilCy: 487, pupilRadiusX: 5 + 7 * dilation, pupilRadiusY: 9 + 6 * dilation },
+    { cx: 486, cy: 486, eyeRadiusX: 17, eyeRadiusY: 20, pupilCx: 486, pupilCy: 485, pupilRadiusX: 4.5 + 6.5 * dilation, pupilRadiusY: 8.5 + 6 * dilation },
+  ]
+}
+
 export function getStalkEyeGlints(phase: number): StalkEyeGlint[] {
   if (phase < .42) return []
 
   const rise = Math.min(1, Math.max(0, (phase - .42) / .16))
   const settle = Math.min(1, Math.max(0, (phase - .82) / .18))
-  const verticalRadius = 4.5 + 3.5 * rise - 2 * settle
+  const verticalRadius = 3 + 2 * rise - settle
   const alpha = .58 + .42 * rise - .17 * settle
 
-  return [[414, 487], [485, 486]].map(([cx, cy]) => ({
+  return [[417, 481], [483, 480]].map(([cx, cy]) => ({
     cx,
     cy,
     horizontalRadius: verticalRadius * .42,
@@ -39,6 +60,25 @@ function paintDiamond(context: CanvasRenderingContext2D, glint: StalkEyeGlint) {
   context.lineTo(cx - x, cy)
   context.closePath()
   context.fill()
+}
+
+function paintStalkEyes(context: CanvasRenderingContext2D, stalk: HTMLImageElement, phase: number) {
+  const eyes = getStalkEyes(phase)
+
+  // Later artwork frames contain enlarged outer eyes and sparkle marks. Restore
+  // the original eye silhouette first, then animate only the dark pupils.
+  for (const eye of eyes) {
+    context.save()
+    context.beginPath()
+    context.ellipse(eye.cx, eye.cy, eye.eyeRadiusX, eye.eyeRadiusY, 0, 0, Math.PI * 2)
+    context.clip()
+    context.drawImage(stalk, 0, 0, 543, 724, 0, 0, 543, 724)
+    context.fillStyle = "#0b110e"
+    context.beginPath()
+    context.ellipse(eye.pupilCx, eye.pupilCy, eye.pupilRadiusX, eye.pupilRadiusY, 0, 0, Math.PI * 2)
+    context.fill()
+    context.restore()
+  }
 }
 
 export function createFacePainter(canvas: HTMLCanvasElement) {
@@ -68,10 +108,11 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
     if (!mode) return false
     if (mode === "stalk") {
       if (!stalk.complete || !stalk.naturalWidth) return false
-      // The artwork alternates the rear-foot load while pupil size increases
-      // monotonically from frame 0 to frame 5. Never reverse this sequence.
+      // Keep the body progression monotonic while correcting the generated
+      // eye artwork below so only the pupils dilate.
       const frame = Math.min(5, Math.floor(Math.max(0, phase) * 6))
       output.drawImage(stalk, frame * 543, 0, 543, 724, 0, 0, 543, 724)
+      paintStalkEyes(output, stalk, phase)
       for (const glint of getStalkEyeGlints(phase)) {
         output.save()
         output.fillStyle = glint.color
