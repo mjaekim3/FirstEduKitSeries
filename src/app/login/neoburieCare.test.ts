@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getPoseBlendDuration, JUMP_SHEET_PATH, MEASURED_FRAME_SHEETS, shouldBlendPoseTransitions } from "./neoburieCare"
+import { FRAME_COUNTS, getPoseBlendDuration, JUMP_SHEET_PATH, MEASURED_FRAME_SHEETS, shouldBlendPoseTransitions } from "./neoburieCare"
 
 describe("cursor-grab jump artwork", () => {
   it("uses the historical sheet where both front paws gather around the cursor", () => {
@@ -12,9 +12,10 @@ describe("cursor-grab jump artwork", () => {
     expect(getPoseBlendDuration("groom")).toBeGreaterThan(0)
   })
 
-  it("softens the sparse wake-up stretch frames without blending the sleep transition", () => {
-    expect(getPoseBlendDuration("wake")).toBe(220)
-    expect(shouldBlendPoseTransitions("wake")).toBe(true)
+  it("uses twelve real wake-up frames without crossfade ghosts", () => {
+    expect(FRAME_COUNTS.wake).toBe(12)
+    expect(getPoseBlendDuration("wake")).toBe(0)
+    expect(shouldBlendPoseTransitions("wake")).toBe(false)
     expect(shouldBlendPoseTransitions("settle")).toBe(false)
   })
 })

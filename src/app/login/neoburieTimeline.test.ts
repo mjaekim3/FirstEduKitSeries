@@ -30,10 +30,11 @@ it("stays seated from grooming into the yawn and keeps one head direction throug
   for (const at of [3150, 5850, 6700]) expect(settlingFrame(at).mirror).toBe(true)
 })
 
-it("reaches the stretch quickly and holds the full extension", () => {
+it("uses twelve distinct poses to move smoothly through the wake-up stretch", () => {
   const { keys } = poseTimeline("wake", 5300)
-  expect(keys.filter(key => key.at >= 1350).map(key => [key.at, key.pose.sheet, key.pose.frame]))
-    .toEqual([[1350, "wake", 1], [1550, "wake", 2], [2250, "wake", 3], [3650, "wake", 4], [4250, "wake", 5], [4900, "walk", 0]])
+  const wakeKeys = keys.filter(key => key.pose.sheet === "wake")
+  expect(wakeKeys.map(key => key.pose.frame)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+  expect(Math.max(...wakeKeys.slice(1).map((key, index) => key.at - wakeKeys[index].at))).toBeLessThanOrEqual(500)
   expect(keys.at(-1)?.at).toBeLessThan(5300)
 })
 
