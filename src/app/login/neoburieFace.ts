@@ -23,6 +23,19 @@ export const STALK_EYES: readonly StalkEyeRegion[] = [
   { cx: 486, cy: 486, rx: 17, ry: 20 },
 ]
 
+export function swatFrameAt(phase: number) {
+  if (phase < .12) return 0
+  if (phase < .24) return 1
+  if (phase < .38) return 2
+  if (phase < .5) return 3
+  if (phase < .6) return 4
+  if (phase < .7) return 5
+  if (phase < .8) return 4
+  if (phase < .89) return 2
+  if (phase < .97) return 1
+  return 0
+}
+
 export function mapStalkEyePixel(eye: StalkEyeRegion, x: number, y: number, focus: number, lookX: number, lookY: number) {
   const dx = x - eye.cx
   const dy = y - eye.cy
@@ -174,8 +187,9 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
     }
     if (mode === "swat") {
       if (!swat.complete || !swat.naturalWidth) return false
-      // Slow lift, an inquisitive hold, then two quick taps.
-      const frame = phase < .2 ? 0 : phase < .44 ? 1 : phase < .72 ? 2 : phase < .8 ? 3 : phase < .92 ? 4 : 5
+      // Two quick taps followed by a complete reverse recovery. Returning to
+      // the neutral frame prevents the second strike from being cut off.
+      const frame = swatFrameAt(phase)
       output.drawImage(swat, frame * 543, 0, 543, 724, 0, 0, 543, 724)
       return true
     }

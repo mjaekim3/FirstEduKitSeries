@@ -6,6 +6,14 @@ import { CAT_TIMING, poseTimeline } from "./neoburieTimeline"
 
 type CatMode = "walk" | "chase" | "sleep" | "settle" | "wake" | "groom" | "stalk" | "swat" | "hunt" | "pounce" | "land" | "held" | "dizzy" | "drop"
 
+const CAT_ART_SCALE: Record<CatMode, number> = {
+  walk: .98, chase: .98, hunt: .98,
+  sleep: 1, settle: 1, wake: 1, groom: 1,
+  stalk: 1.08, swat: 1.02,
+  pounce: 1.16, land: 1.16,
+  held: .93, dizzy: .93, drop: .93,
+}
+
 export default function Neoburie() {
   const catRef = useRef<HTMLDivElement>(null)
   const faceRef = useRef<HTMLCanvasElement>(null)
@@ -79,6 +87,7 @@ export default function Neoburie() {
       cat.classList.add(`is-${next}`)
       bird.style.opacity = next === "chase" ? "1" : "0"
       if (next !== "pounce") cat.style.setProperty("--cat-lift", "0px")
+      cat.style.setProperty("--cat-art-scale", String(CAT_ART_SCALE[next]))
       mode = next
     }
 

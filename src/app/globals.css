@@ -46,7 +46,8 @@ body {
 .login-cat-art {
   position: absolute;
   inset: 0;
-  transform: scaleX(var(--cat-facing, 1));
+  transform: scaleX(var(--cat-facing, 1)) scale(var(--cat-art-scale, 1));
+  transform-origin: 50% 84.254%;
 }
 
 .login-cat.is-held .login-cat-pose {
