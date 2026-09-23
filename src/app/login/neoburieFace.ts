@@ -39,7 +39,7 @@ export const STALK_FACE_SPARKLE_MASKS: readonly StalkEyeRegion[] = [
 ]
 export const STALK_SHEET_PATH = "/neoburie-stalk-v15-clean.png"
 export const HELD_SHEET_PATH = "/neoburie-held-v2-4f-clean.png"
-export const DIZZY_SHEET_PATH = "/neoburie-dizzy-v4-8f-clean.png"
+export const DIZZY_SHEET_PATH = "/neoburie-dizzy-v5-xeyes-8f-clean.png"
 export const HELD_FRAME_COUNT = 4
 export const DIZZY_FRAME_COUNT = 8
 
