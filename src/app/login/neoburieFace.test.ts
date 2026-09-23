@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints, mapStalkEyePixel, STALK_EYES, swatFrameAt } from "./neoburieFace"
+import { getStalkEyeGlints, mapStalkEyePixel, stalkFrameAt, STALK_EYES, swatFrameAt } from "./neoburieFace"
+
+describe("stalk frames", () => {
+  it("holds the final complete crouch instead of showing the clipped last frame", () => {
+    expect([0, .19, .38, .58, .78, 1].map(stalkFrameAt))
+      .toEqual([0, 1, 2, 3, 4, 4])
+  })
+})
 
 describe("paw-swat frames", () => {
   it("shows both taps and returns through recovery poses instead of cutting off", () => {
@@ -33,21 +40,23 @@ describe("stalk pupil dilation", () => {
 })
 
 describe("stalk eye glints", () => {
-  it("places a compact white diamond inside the front of each pupil", () => {
+  it("uses a large white diamond in place of each pupil", () => {
     const glints = getStalkEyeGlints(.78)
 
     expect(glints).toHaveLength(2)
     expect(glints).toEqual([
-      expect.objectContaining({ cx: 417, cy: 481, color: "#ffffff" }),
-      expect.objectContaining({ cx: 483, cy: 480, color: "#ffffff" }),
+      expect.objectContaining({ cx: 420, cy: 487, color: "#ffffff" }),
+      expect.objectContaining({ cx: 486, cy: 486, color: "#ffffff" }),
     ])
     for (let index = 0; index < glints.length; index++) {
       const glint = glints[index]
       const eye = STALK_EYES[index]
       expect(glint.verticalRadius).toBeGreaterThan(glint.horizontalRadius)
-      expect(glint.verticalRadius).toBeLessThanOrEqual(5)
+      expect(glint.verticalRadius).toBeGreaterThanOrEqual(eye.ry * .5)
+      expect(glint.horizontalRadius).toBeGreaterThanOrEqual(eye.rx * .3)
       expect(glint.outline).toBe(false)
-      expect(Math.hypot((glint.cx - eye.cx) / eye.rx, (glint.cy - eye.cy) / eye.ry)).toBeLessThan(.5)
+      expect(glint.cx).toBe(eye.cx)
+      expect(glint.cy).toBe(eye.cy)
     }
   })
 
