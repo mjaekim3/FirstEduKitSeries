@@ -1,19 +1,40 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints } from "./neoburieFace"
+import { getStalkEyeGlints, getStalkEyes } from "./neoburieFace"
+
+describe("stalk pupil dilation", () => {
+  it("keeps each eye the same size while only the pupil grows", () => {
+    const resting = getStalkEyes(0)
+    const hunting = getStalkEyes(1)
+
+    expect(hunting.map(({ eyeRadiusX, eyeRadiusY }) => [eyeRadiusX, eyeRadiusY]))
+      .toEqual(resting.map(({ eyeRadiusX, eyeRadiusY }) => [eyeRadiusX, eyeRadiusY]))
+    for (let index = 0; index < hunting.length; index++) {
+      expect(hunting[index].pupilRadiusX).toBeGreaterThan(resting[index].pupilRadiusX)
+      expect(hunting[index].pupilRadiusY).toBeGreaterThan(resting[index].pupilRadiusY)
+      expect(hunting[index].pupilRadiusX).toBeLessThan(hunting[index].eyeRadiusX)
+      expect(hunting[index].pupilRadiusY).toBeLessThan(hunting[index].eyeRadiusY)
+    }
+  })
+})
 
 describe("stalk eye glints", () => {
-  it("places a compact white diamond toward the front of each pupil", () => {
+  it("places a compact white diamond inside the front of each pupil", () => {
     const glints = getStalkEyeGlints(.78)
+    const eyes = getStalkEyes(.78)
 
     expect(glints).toHaveLength(2)
     expect(glints).toEqual([
-      expect.objectContaining({ cx: 414, cy: 487, color: "#ffffff" }),
-      expect.objectContaining({ cx: 485, cy: 486, color: "#ffffff" }),
+      expect.objectContaining({ cx: 417, cy: 481, color: "#ffffff" }),
+      expect.objectContaining({ cx: 483, cy: 480, color: "#ffffff" }),
     ])
-    for (const glint of glints) {
+    for (let index = 0; index < glints.length; index++) {
+      const glint = glints[index]
+      const eye = eyes[index]
       expect(glint.verticalRadius).toBeGreaterThan(glint.horizontalRadius)
-      expect(glint.verticalRadius).toBeLessThanOrEqual(8)
+      expect(glint.verticalRadius).toBeLessThanOrEqual(5)
       expect(glint.outline).toBe(false)
+      expect(Math.abs(glint.cx - eye.pupilCx) + glint.horizontalRadius).toBeLessThan(eye.pupilRadiusX)
+      expect(Math.abs(glint.cy - eye.pupilCy) + glint.verticalRadius).toBeLessThan(eye.pupilRadiusY)
     }
   })
 
