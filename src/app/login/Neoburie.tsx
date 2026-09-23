@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { createFacePainter } from "./neoburieFace"
+import { useEffect, useRef, type CSSProperties } from "react"
+import { createFacePainter, HELD_SHEET_PATH } from "./neoburieFace"
 import { CAT_TIMING, poseTimeline } from "./neoburieTimeline"
 import { pounceMotion } from "./neoburieMotion"
 
@@ -12,7 +12,7 @@ const CAT_ART_SCALE: Record<CatMode, number> = {
   sleep: 1, settle: 1, wake: 1, groom: 1,
   stalk: 1.08, swat: 1.04,
   pounce: 1.16, land: 1.16,
-  held: .93, dizzy: .93, drop: .93,
+  held: .93, dizzy: 1.04, drop: .93,
 }
 
 export default function Neoburie() {
@@ -400,7 +400,7 @@ export default function Neoburie() {
   return (
     <>
       {/* Absolute animation scale: the 543×724 walking frame renders at 120×160 / 150×200 CSS px. See docs/neoburie/animation-frame-lock.md. */}
-      <div ref={catRef} role="button" tabIndex={0} aria-label="너부리 들어보기" className="login-cat fixed left-0 top-0 h-40 w-[120px] opacity-0 sm:h-[200px] sm:w-[150px]">
+      <div ref={catRef} role="button" tabIndex={0} aria-label="너부리 들어보기" style={{ "--held-sprite": `url(${HELD_SHEET_PATH})` } as CSSProperties} className="login-cat fixed left-0 top-0 h-40 w-[120px] opacity-0 sm:h-[200px] sm:w-[150px]">
         <div className="login-cat-pose h-full w-full">
           <div className="login-cat-art h-full w-full">
             <div className="login-cat-sprite h-full w-full" />
@@ -415,7 +415,6 @@ export default function Neoburie() {
             <div className="login-cat-bubble-pop" aria-hidden="true"><i /><i /><i /><i /></div>
           </div>
           <span className="login-cat-zzz" aria-hidden="true">Zzz</span>
-          <div className="login-cat-dizzy-birds" aria-hidden="true"><span>🐤</span><span>🐦</span><span>🐤</span></div>
         </div>
       </div>
       <div ref={birdRef} aria-hidden="true" className="login-bird pointer-events-none fixed left-0 top-0 z-0 h-8 w-8 opacity-0">
