@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints, mapStalkEyePixel, STALK_EYES } from "./neoburieFace"
+import { getStalkEyeGlints, mapStalkEyePixel, STALK_EYES, swatFrameAt } from "./neoburieFace"
+
+describe("paw-swat frames", () => {
+  it("shows both taps and returns through recovery poses instead of cutting off", () => {
+    expect([0, .16, .3, .46, .56, .66, .76, .85, .93, 1].map(swatFrameAt))
+      .toEqual([0, 1, 2, 3, 4, 5, 4, 2, 1, 0])
+  })
+})
 
 describe("stalk pupil dilation", () => {
   it("magnifies the original pupil pixels while pinning the eye perimeter", () => {
