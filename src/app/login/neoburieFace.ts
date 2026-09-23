@@ -18,6 +18,14 @@ export type StalkEyeRegion = {
   ry: number
 }
 
+export type StalkPupilCover = {
+  cx: number
+  cy: number
+  rx: number
+  ry: number
+  color: "#0b1511"
+}
+
 export const STALK_EYES: readonly StalkEyeRegion[] = [
   { cx: 420, cy: 487, rx: 20, ry: 21 },
   { cx: 486, cy: 486, rx: 17, ry: 20 },
@@ -52,17 +60,27 @@ export function mapStalkEyePixel(eye: StalkEyeRegion, x: number, y: number, focu
   }
 }
 
-export function getStalkEyeGlints(phase: number): StalkEyeGlint[] {
-  if (phase < .42) return []
+export function getStalkPupilCovers(phase: number, lookX: number, lookY: number): StalkPupilCover[] {
+  if (phase < .76) return []
+  return STALK_EYES.map(eye => ({
+    cx: eye.cx + lookX,
+    cy: eye.cy + lookY,
+    rx: eye.rx * .7,
+    ry: eye.ry * .8,
+    color: "#0b1511",
+  }))
+}
 
-  const rise = Math.min(1, Math.max(0, (phase - .42) / .16))
-  const settle = Math.min(1, Math.max(0, (phase - .82) / .18))
-  const verticalRadius = 8 + 4 * rise - settle
-  const alpha = .72 + .28 * rise - .15 * settle
+export function getStalkEyeGlints(phase: number, lookX = 0, lookY = 0): StalkEyeGlint[] {
+  if (phase < .76) return []
+
+  const rise = Math.min(1, Math.max(0, (phase - .76) / .18))
+  const verticalRadius = 8 + 4 * rise
+  const alpha = .72 + .28 * rise
 
   return STALK_EYES.map(({ cx, cy, rx }) => ({
-    cx,
-    cy,
+    cx: cx + lookX,
+    cy: cy + lookY,
     horizontalRadius: Math.max(rx * .34, verticalRadius * .58),
     verticalRadius,
     alpha,
@@ -171,19 +189,20 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
         stalkPixels = stalkSourceContext.getImageData(0, 0, 543, 724)
       }
       paintStalkEyes(output, stalk, stalkPixels.data, stalkEyes, stalkEyeContext, focus, lookX, lookY)
-      for (const glint of getStalkEyeGlints(phase)) {
+      for (const cover of getStalkPupilCovers(phase, lookX, lookY)) {
+        output.save()
+        output.beginPath()
+        output.ellipse(cover.cx, cover.cy, cover.rx, cover.ry, 0, 0, Math.PI * 2)
+        output.fillStyle = cover.color
+        output.fill()
+        output.restore()
+      }
+      for (const glint of getStalkEyeGlints(phase, lookX, lookY)) {
         output.save()
         output.fillStyle = glint.color
-        output.globalAlpha = glint.alpha * .25
-        output.shadowColor = glint.color
-        output.shadowBlur = 7
-        paintDiamond(output, {
-          ...glint,
-          horizontalRadius: glint.horizontalRadius + 2.5,
-          verticalRadius: glint.verticalRadius + 3,
-        })
         output.globalAlpha = glint.alpha
-        output.shadowBlur = 2
+        output.shadowColor = glint.color
+        output.shadowBlur = 1.5
         paintDiamond(output, glint)
         output.restore()
       }
