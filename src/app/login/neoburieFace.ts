@@ -37,6 +37,7 @@ export const STALK_FACE_SPARKLE_MASKS: readonly StalkEyeRegion[] = [
   { cx: 379, cy: 487, rx: 20, ry: 31 },
   { cx: 529, cy: 486, rx: 14, ry: 30 },
 ]
+export const STALK_SHEET_PATH = "/neoburie-stalk-v15-clean.png"
 
 export function stalkFrameAt(phase: number) {
   return Math.min(5, Math.floor(Math.max(0, phase) * 6))
@@ -184,7 +185,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   const stalk = new Image()
   const swat = new Image()
   held.src = "/neoburie-pixel-held.png"
-  stalk.src = "/neoburie-stalk-v14.png"
+  stalk.src = STALK_SHEET_PATH
   swat.src = "/neoburie-swat-v4.png"
   let pixels: ImageData | undefined
   let stalkPixels: ImageData | undefined
