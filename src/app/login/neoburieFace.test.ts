@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints, mapStalkEyePixel, stalkFrameAt, STALK_EYES, swatFrameAt } from "./neoburieFace"
+import { getStalkEyeGlints, getStalkPupilCovers, mapStalkEyePixel, stalkFrameAt, STALK_EYES, swatFrameAt } from "./neoburieFace"
 
 describe("stalk frames", () => {
   it("keeps the complete six-step hunting progression", () => {
@@ -41,7 +41,7 @@ describe("stalk pupil dilation", () => {
 
 describe("stalk eye glints", () => {
   it("uses a large white diamond in place of each pupil", () => {
-    const glints = getStalkEyeGlints(.78)
+    const glints = getStalkEyeGlints(.96)
 
     expect(glints).toHaveLength(2)
     expect(glints).toEqual([
@@ -60,18 +60,29 @@ describe("stalk eye glints", () => {
     }
   })
 
-  it("holds the flash through the middle of the stalking pose before settling", () => {
-    expect(getStalkEyeGlints(.39)).toEqual([])
+  it("replaces the pupil only at the end of the hunting pose", () => {
+    expect(getStalkEyeGlints(.75)).toEqual([])
 
-    const entering = getStalkEyeGlints(.45)
-    const flash = getStalkEyeGlints(.62)
-    const held = getStalkEyeGlints(.78)
-    const settled = getStalkEyeGlints(1)
+    const entering = getStalkEyeGlints(.8)
+    const flash = getStalkEyeGlints(.94)
+    const held = getStalkEyeGlints(1)
     expect(entering).toHaveLength(2)
     expect(held[0].verticalRadius).toBe(flash[0].verticalRadius)
     expect(held[0].alpha).toBe(flash[0].alpha)
-    expect(flash[0].verticalRadius).toBeGreaterThan(settled[0].verticalRadius)
-    expect(flash[0].alpha).toBeGreaterThan(settled[0].alpha)
-    expect(settled[0].alpha).toBeGreaterThan(.7)
+    expect(flash[0].verticalRadius).toBeGreaterThan(entering[0].verticalRadius)
+    expect(flash[0].alpha).toBeGreaterThan(entering[0].alpha)
+  })
+
+  it("covers the original off-center highlight before drawing one replacement pupil", () => {
+    expect(getStalkPupilCovers(.75, 0, 0)).toEqual([])
+
+    const covers = getStalkPupilCovers(.9, 0, 0)
+    expect(covers).toHaveLength(2)
+    covers.forEach((cover, index) => {
+      const eye = STALK_EYES[index]
+      const oldHighlight = { x: eye.cx + 6, y: eye.cy - 11 }
+      expect(((oldHighlight.x - cover.cx) / cover.rx) ** 2 + ((oldHighlight.y - cover.cy) / cover.ry) ** 2).toBeLessThan(1)
+      expect(cover.color).toBe("#0b1511")
+    })
   })
 })
