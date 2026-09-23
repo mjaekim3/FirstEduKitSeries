@@ -119,10 +119,6 @@ body {
   background-size: 400% 100%;
 }
 
-.login-cat.is-held .login-cat-sprite {
-  animation: cat-held-frames 540ms linear infinite;
-}
-
 .login-cat.is-dizzy .login-cat-sprite {
   animation: none;
   background-position: 0% 0;
@@ -218,13 +214,6 @@ body {
   70%, 79.99%  { background-position: 77.778% 0; }
   80%, 89.99%  { background-position: 88.889% 0; }
   90%, 100%    { background-position: 100% 0; }
-}
-
-@keyframes cat-held-frames {
-  0%, 24.99%  { background-position: 0% 0; transform: translateX(0); }
-  25%, 49.99% { background-position: 33.33% 0; transform: translateX(9.6%); }
-  50%, 74.99% { background-position: 66.67% 0; transform: translateX(13.5%); }
-  75%, 100%   { background-position: 100% 0; transform: translateX(23.8%); }
 }
 
 @keyframes cat-ear-twitch {

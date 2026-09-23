@@ -39,8 +39,13 @@ export const STALK_FACE_SPARKLE_MASKS: readonly StalkEyeRegion[] = [
 ]
 export const STALK_SHEET_PATH = "/neoburie-stalk-v15-clean.png"
 export const HELD_SHEET_PATH = "/neoburie-held-v2-4f-clean.png"
-export const DIZZY_SHEET_PATH = "/neoburie-dizzy-v2-8f-clean.png"
+export const DIZZY_SHEET_PATH = "/neoburie-dizzy-v3-8f-clean.png"
+export const HELD_FRAME_COUNT = 4
 export const DIZZY_FRAME_COUNT = 8
+
+export function heldFrameAt(time: number) {
+  return Math.floor(Math.max(0, time) / 135) % HELD_FRAME_COUNT
+}
 
 export function dizzyFrameAt(time: number) {
   return Math.floor(Math.max(0, time) / 150) % DIZZY_FRAME_COUNT
@@ -182,14 +187,16 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   stalkEyes.height = 724
   const stalkEyeContext = stalkEyes.getContext("2d")!
   const dizzy = new Image()
+  const held = new Image()
   const stalk = new Image()
   const swat = new Image()
   dizzy.src = DIZZY_SHEET_PATH
+  held.src = HELD_SHEET_PATH
   stalk.src = STALK_SHEET_PATH
   swat.src = "/neoburie-swat-v4.png"
   let stalkPixels: ImageData | undefined
 
-  return (mode: "stalk" | "swat" | "pounce" | "land" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0) => {
+  return (mode: "stalk" | "swat" | "pounce" | "land" | "held" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0) => {
     output.clearRect(0, 0, 543, 724)
     canvas.style.transformOrigin = ""
     canvas.dataset.atlas = "false"
@@ -237,6 +244,12 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
     if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") {
       if (paintCare(mode, time, phase)) return true
       if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") return false
+    }
+    if (mode === "held") {
+      if (!held.complete || !held.naturalWidth) return false
+      canvas.dataset.atlas = "true"
+      output.drawImage(held, heldFrameAt(time) * 543, 0, 543, 724, 0, 0, 543, 724)
+      return true
     }
     if (mode === "dizzy") {
       if (!dizzy.complete || !dizzy.naturalWidth) return false

@@ -361,7 +361,7 @@ export default function Neoburie() {
         if (time - chaseStart > 4300) { chooseTarget(); setMode("walk") }
       }
 
-      const faceMode = cat.classList.contains("is-dizzy") ? "dizzy" : mode === "stalk" || mode === "swat" || mode === "pounce" || mode === "land" || mode === "wake" || mode === "groom" || mode === "settle" ? mode : null
+      const faceMode = cat.classList.contains("is-dizzy") ? "dizzy" : mode === "held" || mode === "stalk" || mode === "swat" || mode === "pounce" || mode === "land" || mode === "wake" || mode === "groom" || mode === "settle" ? mode : null
       const stalkPhase = Math.max(0, Math.min(1, (time - stalkUntil + CAT_TIMING.stalk) / CAT_TIMING.stalk))
       const focus = Math.max(0, Math.min(1, (stalkPhase - .12) / .38))
       const painted = paintFace(faceMode, reducedMotion ? 0 : time, focus * focus * (3 - 2 * focus), lookX, lookY, mode === "wake" || mode === "groom" || mode === "settle" || mode === "land" ? (time - careStart) / CAT_TIMING[mode] : mode === "stalk" ? stalkPhase : mode === "swat" ? Math.min(1, (time - swatStart) / CAT_TIMING.swat) : Math.min(1, (time - pounceStart) / CAT_TIMING.jump))
