@@ -9,6 +9,7 @@ export type StalkEyeGlint = {
   alpha: number
   color: "#ffffff"
   outline: false
+  clip: StalkEyeRegion
 }
 
 export type StalkEyeRegion = {
@@ -24,6 +25,7 @@ export type StalkPupilCover = {
   rx: number
   ry: number
   color: "#0b1511"
+  clip: StalkEyeRegion
 }
 
 export const STALK_EYES: readonly StalkEyeRegion[] = [
@@ -68,6 +70,7 @@ export function getStalkPupilCovers(phase: number, lookX: number, lookY: number)
     rx: eye.rx * .7,
     ry: eye.ry * .8,
     color: "#0b1511",
+    clip: { ...eye },
   }))
 }
 
@@ -78,15 +81,22 @@ export function getStalkEyeGlints(phase: number, lookX = 0, lookY = 0): StalkEye
   const verticalRadius = 8 + 4 * rise
   const alpha = .72 + .28 * rise
 
-  return STALK_EYES.map(({ cx, cy, rx }) => ({
-    cx: cx + lookX,
-    cy: cy + lookY,
-    horizontalRadius: Math.max(rx * .34, verticalRadius * .58),
+  return STALK_EYES.map(eye => ({
+    cx: eye.cx + lookX,
+    cy: eye.cy + lookY,
+    horizontalRadius: Math.max(eye.rx * .34, verticalRadius * .58),
     verticalRadius,
     alpha,
     color: "#ffffff",
     outline: false,
+    clip: { ...eye },
   }))
+}
+
+function clipToStalkEye(context: CanvasRenderingContext2D, eye: StalkEyeRegion) {
+  context.beginPath()
+  context.ellipse(eye.cx, eye.cy, eye.rx, eye.ry, 0, 0, Math.PI * 2)
+  context.clip()
 }
 
 function paintDiamond(context: CanvasRenderingContext2D, glint: StalkEyeGlint) {
@@ -191,6 +201,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       paintStalkEyes(output, stalk, stalkPixels.data, stalkEyes, stalkEyeContext, focus, lookX, lookY)
       for (const cover of getStalkPupilCovers(phase, lookX, lookY)) {
         output.save()
+        clipToStalkEye(output, cover.clip)
         output.beginPath()
         output.ellipse(cover.cx, cover.cy, cover.rx, cover.ry, 0, 0, Math.PI * 2)
         output.fillStyle = cover.color
@@ -199,6 +210,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       }
       for (const glint of getStalkEyeGlints(phase, lookX, lookY)) {
         output.save()
+        clipToStalkEye(output, glint.clip)
         output.fillStyle = glint.color
         output.globalAlpha = glint.alpha
         output.shadowColor = glint.color
