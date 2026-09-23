@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import path from "node:path"
 import sharp from "sharp"
-import { DIZZY_FRAME_COUNT, DIZZY_SHEET_PATH, dizzyFrameAt, getStalkEyeGlints, getStalkPupilCovers, HELD_SHEET_PATH, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, STALK_SHEET_PATH, swatFrameAt } from "./neoburieFace"
+import { DIZZY_FRAME_COUNT, DIZZY_SHEET_PATH, dizzyFrameAt, getStalkEyeGlints, getStalkPupilCovers, HELD_FRAME_COUNT, heldFrameAt, HELD_SHEET_PATH, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, STALK_SHEET_PATH, swatFrameAt } from "./neoburieFace"
 
 describe("stalk frames", () => {
   it("keeps the complete six-step hunting progression", () => {
@@ -20,14 +20,37 @@ describe("paw-swat frames", () => {
 describe("held and dizzy artwork", () => {
   it("uses matching redrawn sprite sheets instead of modifying the old held face", () => {
     expect(HELD_SHEET_PATH).toBe("/neoburie-held-v2-4f-clean.png")
-    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v2-8f-clean.png")
+    expect(DIZZY_SHEET_PATH).toBe("/neoburie-dizzy-v3-8f-clean.png")
+    expect(HELD_FRAME_COUNT).toBe(4)
     expect(DIZZY_FRAME_COUNT).toBe(8)
   })
 
-  it("cycles every dizzy frame so the spiral eyes and overhead birds move together", () => {
+  it("holds each aligned catch frame without any in-between sprite translation", () => {
+    expect([0, 135, 270, 405].map(heldFrameAt)).toEqual([0, 1, 2, 3])
+    expect(heldFrameAt(540)).toBe(0)
+  })
+
+  it("cycles every dizzy frame so the rolling pupils and overhead birds move together", () => {
     expect([0, 150, 300, 450, 600, 750, 900, 1050].map(dizzyFrameAt))
       .toEqual([0, 1, 2, 3, 4, 5, 6, 7])
     expect(dizzyFrameAt(1200)).toBe(0)
+  })
+
+  it("keeps every dizzy bird and body safely inside its frame", async () => {
+    const { data, info } = await sharp(path.join(process.cwd(), "public", DIZZY_SHEET_PATH.slice(1)))
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+
+    expect(info.width).toBe(543 * DIZZY_FRAME_COUNT)
+    expect(info.height).toBe(724)
+    for (let frame = 0; frame < DIZZY_FRAME_COUNT; frame++) {
+      const left = frame * 543
+      for (let y = 0; y < info.height; y++) for (let x = 0; x < 543; x++) {
+        if (x >= 10 && x < 533 && y >= 14 && y < 710) continue
+        expect(data[(y * info.width + left + x) * info.channels + 3]).toBe(0)
+      }
+    }
   })
 })
 
