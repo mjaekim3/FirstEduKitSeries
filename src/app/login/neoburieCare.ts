@@ -4,8 +4,13 @@ type Frame = { x: number; y: number; width: number; height: number; area: number
 type Sheet = { image: HTMLImageElement; frames?: Frame[] }
 // Rest and wake share one fixed scale in the 543 × 724 walking-frame coordinates.
 const SHEET_SCALE = { rest: 1.16, groom: 1.16, jump: 1.08, wake: 1.16 }
-export const JUMP_SHEET_PATH = "/neoburie-jump-v4.png"
+export const JUMP_SHEET_PATH = "/neoburie-jump-v4-clean.png"
 export const MEASURED_FRAME_SHEETS = ["rest", "groom", "jump", "wake"] as const
+
+export function getPoseBlendDuration(mode: CareMode) {
+  if (mode === "pounce") return 0
+  return mode === "settle" ? 200 : 90
+}
 
 // Find complete sprites rather than cutting a paw at a nominal grid boundary.
 function measureFrames(image: HTMLImageElement): Frame[] {
@@ -60,8 +65,8 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
     let index = keys.length - 1
     while (index > 0 && keys[index].at > time) index--
     const current = keys[index], previous = keys[Math.max(0, index - 1)]
-    const duration = mode === "pounce" ? 1 : mode === "settle" ? 200 : 90
-    const fraction = Math.min(1, Math.max(0, (time - current.at) / duration))
+    const duration = getPoseBlendDuration(mode)
+    const fraction = duration === 0 ? 1 : Math.min(1, Math.max(0, (time - current.at) / duration))
     const mix = fraction * fraction * (3 - 2 * fraction)
     // Keep the same ground line from standing through curled sleep. The sleep
     // sprite's native baseline is 39px above the standing/walking baseline.
