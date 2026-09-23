@@ -1,26 +1,33 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints, getStalkEyes } from "./neoburieFace"
+import { getStalkEyeGlints, mapStalkEyePixel, STALK_EYES } from "./neoburieFace"
 
 describe("stalk pupil dilation", () => {
-  it("keeps each eye the same size while only the pupil grows", () => {
-    const resting = getStalkEyes(0)
-    const hunting = getStalkEyes(1)
+  it("magnifies the original pupil pixels while pinning the eye perimeter", () => {
+    const eye = STALK_EYES[0]
+    const centerSide = { x: eye.cx + eye.rx * .5, y: eye.cy }
+    const resting = mapStalkEyePixel(eye, centerSide.x, centerSide.y, 0, 0, 0)
+    const hunting = mapStalkEyePixel(eye, centerSide.x, centerSide.y, 1, 0, 0)
+    const boundary = mapStalkEyePixel(eye, eye.cx + eye.rx, eye.cy, 1, 0, 0)
 
-    expect(hunting.map(({ eyeRadiusX, eyeRadiusY }) => [eyeRadiusX, eyeRadiusY]))
-      .toEqual(resting.map(({ eyeRadiusX, eyeRadiusY }) => [eyeRadiusX, eyeRadiusY]))
-    for (let index = 0; index < hunting.length; index++) {
-      expect(hunting[index].pupilRadiusX).toBeGreaterThan(resting[index].pupilRadiusX)
-      expect(hunting[index].pupilRadiusY).toBeGreaterThan(resting[index].pupilRadiusY)
-      expect(hunting[index].pupilRadiusX).toBeLessThan(hunting[index].eyeRadiusX)
-      expect(hunting[index].pupilRadiusY).toBeLessThan(hunting[index].eyeRadiusY)
-    }
+    expect(resting).toEqual(centerSide)
+    expect(Math.abs(hunting.x - eye.cx)).toBeLessThan(Math.abs(resting.x - eye.cx))
+    expect(boundary).toEqual({ x: eye.cx + eye.rx, y: eye.cy })
+  })
+
+  it("moves the magnified source pixels with the cursor without moving the eye edge", () => {
+    const eye = STALK_EYES[1]
+    const center = mapStalkEyePixel(eye, eye.cx, eye.cy, 1, 3, -2)
+    const edge = mapStalkEyePixel(eye, eye.cx, eye.cy + eye.ry, 1, 3, -2)
+
+    expect(center.x).toBeLessThan(eye.cx)
+    expect(center.y).toBeGreaterThan(eye.cy)
+    expect(edge).toEqual({ x: eye.cx, y: eye.cy + eye.ry })
   })
 })
 
 describe("stalk eye glints", () => {
   it("places a compact white diamond inside the front of each pupil", () => {
     const glints = getStalkEyeGlints(.78)
-    const eyes = getStalkEyes(.78)
 
     expect(glints).toHaveLength(2)
     expect(glints).toEqual([
@@ -29,12 +36,11 @@ describe("stalk eye glints", () => {
     ])
     for (let index = 0; index < glints.length; index++) {
       const glint = glints[index]
-      const eye = eyes[index]
+      const eye = STALK_EYES[index]
       expect(glint.verticalRadius).toBeGreaterThan(glint.horizontalRadius)
       expect(glint.verticalRadius).toBeLessThanOrEqual(5)
       expect(glint.outline).toBe(false)
-      expect(Math.abs(glint.cx - eye.pupilCx) + glint.horizontalRadius).toBeLessThan(eye.pupilRadiusX)
-      expect(Math.abs(glint.cy - eye.pupilCy) + glint.verticalRadius).toBeLessThan(eye.pupilRadiusY)
+      expect(Math.hypot((glint.cx - eye.cx) / eye.rx, (glint.cy - eye.cy) / eye.ry)).toBeLessThan(.5)
     }
   })
 
