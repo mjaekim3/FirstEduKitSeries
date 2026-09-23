@@ -23,6 +23,10 @@ export const STALK_EYES: readonly StalkEyeRegion[] = [
   { cx: 486, cy: 486, rx: 17, ry: 20 },
 ]
 
+export function stalkFrameAt(phase: number) {
+  return Math.min(4, Math.floor(Math.max(0, phase) * 6))
+}
+
 export function swatFrameAt(phase: number) {
   if (phase < .12) return 0
   if (phase < .24) return 1
@@ -53,13 +57,13 @@ export function getStalkEyeGlints(phase: number): StalkEyeGlint[] {
 
   const rise = Math.min(1, Math.max(0, (phase - .42) / .16))
   const settle = Math.min(1, Math.max(0, (phase - .82) / .18))
-  const verticalRadius = 3 + 2 * rise - settle
-  const alpha = .58 + .42 * rise - .17 * settle
+  const verticalRadius = 8 + 4 * rise - settle
+  const alpha = .72 + .28 * rise - .15 * settle
 
-  return [[417, 481], [483, 480]].map(([cx, cy]) => ({
+  return STALK_EYES.map(({ cx, cy, rx }) => ({
     cx,
     cy,
-    horizontalRadius: verticalRadius * .42,
+    horizontalRadius: Math.max(rx * .34, verticalRadius * .58),
     verticalRadius,
     alpha,
     color: "#ffffff",
@@ -160,7 +164,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       if (!stalk.complete || !stalk.naturalWidth) return false
       // Keep the body progression monotonic while correcting the generated
       // eye artwork below so only the pupils dilate.
-      const frame = Math.min(5, Math.floor(Math.max(0, phase) * 6))
+      const frame = stalkFrameAt(phase)
       output.drawImage(stalk, frame * 543, 0, 543, 724, 0, 0, 543, 724)
       if (!stalkPixels) {
         stalkSourceContext.drawImage(stalk, 0, 0, 543, 724, 0, 0, 543, 724)
