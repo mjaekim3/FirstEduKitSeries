@@ -17,13 +17,18 @@ describe("stalk eye glints", () => {
     }
   })
 
-  it("flashes once with the stalking phase instead of continuously pulsing with time", () => {
-    expect(getStalkEyeGlints(.64)).toEqual([])
+  it("holds the flash through the middle of the stalking pose before settling", () => {
+    expect(getStalkEyeGlints(.39)).toEqual([])
 
-    const flash = getStalkEyeGlints(.78)
+    const entering = getStalkEyeGlints(.45)
+    const flash = getStalkEyeGlints(.62)
+    const held = getStalkEyeGlints(.78)
     const settled = getStalkEyeGlints(1)
+    expect(entering).toHaveLength(2)
+    expect(held[0].verticalRadius).toBe(flash[0].verticalRadius)
+    expect(held[0].alpha).toBe(flash[0].alpha)
     expect(flash[0].verticalRadius).toBeGreaterThan(settled[0].verticalRadius)
     expect(flash[0].alpha).toBeGreaterThan(settled[0].alpha)
-    expect(settled[0].alpha).toBeGreaterThan(.5)
+    expect(settled[0].alpha).toBeGreaterThan(.7)
   })
 })
