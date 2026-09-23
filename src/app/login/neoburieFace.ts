@@ -24,7 +24,7 @@ export const STALK_EYES: readonly StalkEyeRegion[] = [
 ]
 
 export function stalkFrameAt(phase: number) {
-  return Math.min(4, Math.floor(Math.max(0, phase) * 6))
+  return Math.min(5, Math.floor(Math.max(0, phase) * 6))
 }
 
 export function swatFrameAt(phase: number) {

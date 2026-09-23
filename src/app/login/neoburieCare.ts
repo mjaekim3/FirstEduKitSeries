@@ -5,6 +5,26 @@ type Sheet = { image: HTMLImageElement; frames?: Frame[] }
 // Rest and wake share one fixed scale in the 543 × 724 walking-frame coordinates.
 const SHEET_SCALE = { rest: 1.16, groom: 1.16, wake: 1.16 }
 
+export function getJumpFramePlacement() {
+  const frameWidth = 543
+  const frameHeight = 724
+  const sourceBaseline = 610
+  const padding = 24
+  const width = frameWidth - padding * 2
+  const scale = width / frameWidth
+  const height = frameHeight * scale
+  const baseline = sourceBaseline * scale
+  return {
+    x: -width / 2,
+    y: -baseline,
+    width,
+    height,
+    baseline,
+    canvasLeft: (frameWidth - width) / 2,
+    canvasRight: (frameWidth + width) / 2,
+  }
+}
+
 // Find complete sprites rather than cutting a paw at a nominal grid boundary.
 function measureFrames(image: HTMLImageElement): Frame[] {
   const canvas = document.createElement("canvas")
@@ -69,11 +89,17 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
     const draw = (pose: Pose, opacity: number) => {
       const sheet = sheets[pose.sheet]
       context.save(); context.globalAlpha = opacity
-      if (pose.sheet === "idle" || pose.sheet === "walk" || pose.sheet === "sleep" || pose.sheet === "jump") {
+      if (pose.sheet === "idle" || pose.sheet === "walk" || pose.sheet === "sleep") {
         // Exact originals at both ends of the sleep/wake sequence.
         context.translate(271.5, ground); context.scale(pose.mirror ? -1 : 1, 1)
         const baseline = pose.sheet === "sleep" ? 571 : 610
         context.drawImage(sheet.image, pose.frame * 543, 0, 543, 724, -271.5, -baseline, 543, 724)
+      } else if (pose.sheet === "jump") {
+        // The reaching paws sit close to the atlas edge. Keep a fixed inner
+        // gutter so the cursor-grab silhouette remains complete when enlarged.
+        const placement = getJumpFramePlacement()
+        context.translate(271.5, ground); context.scale(pose.mirror ? -1 : 1, 1)
+        context.drawImage(sheet.image, pose.frame * 543, 0, 543, 724, placement.x, placement.y, placement.width, placement.height)
       } else if (pose.sheet === "yawnHalf" || pose.sheet === "yawnOpen") {
         // The seated silhouette matches the grooming pose at one fixed scale.
         // Anchor the visible paws, not the transparent image edge, to ground.
