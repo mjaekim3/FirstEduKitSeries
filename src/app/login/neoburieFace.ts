@@ -11,25 +11,28 @@ export type StalkEyeGlint = {
   outline: false
 }
 
-export type StalkEye = {
+export type StalkEyeRegion = {
   cx: number
   cy: number
-  eyeRadiusX: number
-  eyeRadiusY: number
-  pupilCx: number
-  pupilCy: number
-  pupilRadiusX: number
-  pupilRadiusY: number
+  rx: number
+  ry: number
 }
 
-export function getStalkEyes(phase: number): StalkEye[] {
-  const progress = Math.min(1, Math.max(0, (phase - .1) / .7))
-  const dilation = progress * progress * (3 - 2 * progress)
+export const STALK_EYES: readonly StalkEyeRegion[] = [
+  { cx: 420, cy: 487, rx: 20, ry: 21 },
+  { cx: 486, cy: 486, rx: 17, ry: 20 },
+]
 
-  return [
-    { cx: 420, cy: 487, eyeRadiusX: 20, eyeRadiusY: 21, pupilCx: 420, pupilCy: 487, pupilRadiusX: 5 + 7 * dilation, pupilRadiusY: 9 + 6 * dilation },
-    { cx: 486, cy: 486, eyeRadiusX: 17, eyeRadiusY: 20, pupilCx: 486, pupilCy: 485, pupilRadiusX: 4.5 + 6.5 * dilation, pupilRadiusY: 8.5 + 6 * dilation },
-  ]
+export function mapStalkEyePixel(eye: StalkEyeRegion, x: number, y: number, focus: number, lookX: number, lookY: number) {
+  const dx = x - eye.cx
+  const dy = y - eye.cy
+  const radius = Math.hypot(dx / eye.rx, dy / eye.ry)
+  const weight = Math.max(0, 1 - radius * radius)
+  const scale = 1 + focus * .75 * weight
+  return {
+    x: Math.round(eye.cx + (dx - lookX * weight) / scale),
+    y: Math.round(eye.cy + (dy - lookY * weight) / scale),
+  }
 }
 
 export function getStalkEyeGlints(phase: number): StalkEyeGlint[] {
@@ -62,23 +65,48 @@ function paintDiamond(context: CanvasRenderingContext2D, glint: StalkEyeGlint) {
   context.fill()
 }
 
-function paintStalkEyes(context: CanvasRenderingContext2D, stalk: HTMLImageElement, phase: number) {
-  const eyes = getStalkEyes(phase)
+function paintStalkEyes(
+  output: CanvasRenderingContext2D,
+  stalk: HTMLImageElement,
+  original: Uint8ClampedArray,
+  eyeCanvas: HTMLCanvasElement,
+  eyeContext: CanvasRenderingContext2D,
+  focus: number,
+  lookX: number,
+  lookY: number,
+) {
+  eyeContext.clearRect(0, 0, 543, 724)
+  for (const eye of STALK_EYES) {
+    const left = eye.cx - eye.rx
+    const top = eye.cy - eye.ry
+    const width = eye.rx * 2
+    const height = eye.ry * 2
+    const patch = eyeContext.createImageData(width, height)
 
-  // Later artwork frames contain enlarged outer eyes and sparkle marks. Restore
-  // the original eye silhouette first, then animate only the dark pupils.
-  for (const eye of eyes) {
-    context.save()
-    context.beginPath()
-    context.ellipse(eye.cx, eye.cy, eye.eyeRadiusX, eye.eyeRadiusY, 0, 0, Math.PI * 2)
-    context.clip()
-    context.drawImage(stalk, 0, 0, 543, 724, 0, 0, 543, 724)
-    context.fillStyle = "#0b110e"
-    context.beginPath()
-    context.ellipse(eye.pupilCx, eye.pupilCy, eye.pupilRadiusX, eye.pupilRadiusY, 0, 0, Math.PI * 2)
-    context.fill()
-    context.restore()
+    for (let py = 0; py < height; py++) for (let px = 0; px < width; px++) {
+      const mapped = mapStalkEyePixel(eye, left + px, top + py, focus, lookX, lookY)
+      const sourceIndex = (mapped.y * 543 + mapped.x) * 4
+      const destinationIndex = (py * width + px) * 4
+      for (let channel = 0; channel < 4; channel++) patch.data[destinationIndex + channel] = original[sourceIndex + channel]
+    }
+    eyeContext.putImageData(patch, left, top)
   }
+
+  // Remove the generated large eyes and external starbursts with the clean
+  // first-frame artwork before compositing the locally warped eye pixels.
+  output.save()
+  output.beginPath()
+  for (const eye of STALK_EYES) output.ellipse(eye.cx, eye.cy, eye.rx + 10, eye.ry + 8, 0, 0, Math.PI * 2)
+  output.clip()
+  output.drawImage(stalk, 0, 0, 543, 724, 0, 0, 543, 724)
+  output.restore()
+
+  output.save()
+  output.beginPath()
+  for (const eye of STALK_EYES) output.ellipse(eye.cx, eye.cy, eye.rx, eye.ry, 0, 0, Math.PI * 2)
+  output.clip()
+  output.drawImage(eyeCanvas, 0, 0)
+  output.restore()
 }
 
 export function createFacePainter(canvas: HTMLCanvasElement) {
@@ -92,6 +120,14 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   source.width = 543
   source.height = 724
   const sourceContext = source.getContext("2d", { willReadFrequently: true })!
+  const stalkSource = document.createElement("canvas")
+  stalkSource.width = 543
+  stalkSource.height = 724
+  const stalkSourceContext = stalkSource.getContext("2d", { willReadFrequently: true })!
+  const stalkEyes = document.createElement("canvas")
+  stalkEyes.width = 543
+  stalkEyes.height = 724
+  const stalkEyeContext = stalkEyes.getContext("2d")!
   const held = new Image()
   const stalk = new Image()
   const swat = new Image()
@@ -99,8 +135,9 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   stalk.src = "/neoburie-stalk-v14.png"
   swat.src = "/neoburie-swat-v4.png"
   let pixels: ImageData | undefined
+  let stalkPixels: ImageData | undefined
 
-  return (mode: "stalk" | "swat" | "pounce" | "land" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, _focus: number, _lookX: number, _lookY: number, phase = 0) => {
+  return (mode: "stalk" | "swat" | "pounce" | "land" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0) => {
     context.clearRect(0, 0, 543, 724)
     output.clearRect(0, 0, 543, 724)
     canvas.style.transformOrigin = ""
@@ -112,7 +149,11 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       // eye artwork below so only the pupils dilate.
       const frame = Math.min(5, Math.floor(Math.max(0, phase) * 6))
       output.drawImage(stalk, frame * 543, 0, 543, 724, 0, 0, 543, 724)
-      paintStalkEyes(output, stalk, phase)
+      if (!stalkPixels) {
+        stalkSourceContext.drawImage(stalk, 0, 0, 543, 724, 0, 0, 543, 724)
+        stalkPixels = stalkSourceContext.getImageData(0, 0, 543, 724)
+      }
+      paintStalkEyes(output, stalk, stalkPixels.data, stalkEyes, stalkEyeContext, focus, lookX, lookY)
       for (const glint of getStalkEyeGlints(phase)) {
         output.save()
         output.fillStyle = glint.color
