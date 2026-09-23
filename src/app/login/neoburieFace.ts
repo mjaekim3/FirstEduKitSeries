@@ -12,10 +12,10 @@ export type StalkEyeGlint = {
 }
 
 export function getStalkEyeGlints(phase: number): StalkEyeGlint[] {
-  if (phase < .66) return []
+  if (phase < .42) return []
 
-  const rise = Math.min(1, Math.max(0, (phase - .66) / .12))
-  const settle = Math.min(1, Math.max(0, (phase - .78) / .22))
+  const rise = Math.min(1, Math.max(0, (phase - .42) / .16))
+  const settle = Math.min(1, Math.max(0, (phase - .82) / .18))
   const verticalRadius = 4.5 + 3.5 * rise - 2 * settle
   const alpha = .58 + .42 * rise - .17 * settle
 
