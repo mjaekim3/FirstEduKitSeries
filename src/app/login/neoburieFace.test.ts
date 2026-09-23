@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getStalkEyeGlints, getStalkPupilCovers, mapStalkEyePixel, stalkFrameAt, STALK_EYES, swatFrameAt } from "./neoburieFace"
+import { getStalkEyeGlints, getStalkPupilCovers, mapStalkEyePixel, stalkFrameAt, STALK_EYES, STALK_FACE_SPARKLE_MASKS, swatFrameAt } from "./neoburieFace"
 
 describe("stalk frames", () => {
   it("keeps the complete six-step hunting progression", () => {
@@ -40,6 +40,12 @@ describe("stalk pupil dilation", () => {
 })
 
 describe("stalk eye glints", () => {
+  it("cleans only the two sparkles beside the face, outside the eye glint regions", () => {
+    expect(STALK_FACE_SPARKLE_MASKS).toHaveLength(2)
+    expect(STALK_FACE_SPARKLE_MASKS[0].cx).toBeLessThan(STALK_EYES[0].cx - STALK_EYES[0].rx)
+    expect(STALK_FACE_SPARKLE_MASKS[1].cx).toBeGreaterThan(STALK_EYES[1].cx + STALK_EYES[1].rx)
+  })
+
   it("uses a large white diamond in place of each pupil", () => {
     const glints = getStalkEyeGlints(.96)
 
