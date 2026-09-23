@@ -1,17 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { getJumpFramePlacement } from "./neoburieCare"
+import { JUMP_SHEET_PATH, MEASURED_FRAME_SHEETS } from "./neoburieCare"
 
-describe("cursor-grab jump framing", () => {
-  it("keeps the enlarged reaching pose inside a safe horizontal inset", () => {
-    const placement = getJumpFramePlacement()
-
-    expect(placement.canvasLeft).toBe(24)
-    expect(placement.canvasRight).toBe(519)
-    expect(placement.width).toBe(495)
-  })
-
-  it("keeps the paws on the same ground line after adding the inset", () => {
-    const placement = getJumpFramePlacement()
-    expect(placement.y + placement.baseline).toBeCloseTo(0)
+describe("cursor-grab jump artwork", () => {
+  it("uses the historical sheet where both front paws gather around the cursor", () => {
+    expect(JUMP_SHEET_PATH).toBe("/neoburie-jump-v4.png")
+    expect(MEASURED_FRAME_SHEETS).toContain("jump")
   })
 })
