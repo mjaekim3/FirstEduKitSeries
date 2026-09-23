@@ -1,6 +1,46 @@
 import { createCarePainter } from "./neoburieCare"
 
 // Coordinates belong to the original 543 × 724 sprite frame, before mirroring.
+export type StalkEyeGlint = {
+  cx: number
+  cy: number
+  horizontalRadius: number
+  verticalRadius: number
+  alpha: number
+  color: "#ffffff"
+  outline: false
+}
+
+export function getStalkEyeGlints(phase: number): StalkEyeGlint[] {
+  if (phase < .66) return []
+
+  const rise = Math.min(1, Math.max(0, (phase - .66) / .12))
+  const settle = Math.min(1, Math.max(0, (phase - .78) / .22))
+  const verticalRadius = 4.5 + 3.5 * rise - 2 * settle
+  const alpha = .58 + .42 * rise - .17 * settle
+
+  return [[414, 487], [485, 486]].map(([cx, cy]) => ({
+    cx,
+    cy,
+    horizontalRadius: verticalRadius * .42,
+    verticalRadius,
+    alpha,
+    color: "#ffffff",
+    outline: false,
+  }))
+}
+
+function paintDiamond(context: CanvasRenderingContext2D, glint: StalkEyeGlint) {
+  const { cx, cy, horizontalRadius: x, verticalRadius: y } = glint
+  context.beginPath()
+  context.moveTo(cx, cy - y)
+  context.lineTo(cx + x, cy)
+  context.lineTo(cx, cy + y)
+  context.lineTo(cx - x, cy)
+  context.closePath()
+  context.fill()
+}
+
 export function createFacePainter(canvas: HTMLCanvasElement) {
   const output = canvas.getContext("2d")!
   const paintCare = createCarePainter(canvas)
@@ -32,26 +72,21 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       // monotonically from frame 0 to frame 5. Never reverse this sequence.
       const frame = Math.min(5, Math.floor(Math.max(0, phase) * 6))
       output.drawImage(stalk, frame * 543, 0, 543, 724, 0, 0, 543, 724)
-      if (frame >= 4) {
-        const pulse = .72 + Math.sin(time / 90) * .28
-        for (const [cx, cy, radius] of [[418, 494, 13], [489, 492, 15]] as const) {
-          const r = radius * pulse
-          output.beginPath()
-          output.moveTo(cx, cy - r)
-          output.lineTo(cx + 2.4, cy - 2.4)
-          output.lineTo(cx + r, cy)
-          output.lineTo(cx + 2.4, cy + 2.4)
-          output.lineTo(cx, cy + r)
-          output.lineTo(cx - 2.4, cy + 2.4)
-          output.lineTo(cx - r, cy)
-          output.lineTo(cx - 2.4, cy - 2.4)
-          output.closePath()
-          output.fillStyle = "#ffffff"
-          output.fill()
-          output.strokeStyle = "#f2b940"
-          output.lineWidth = 4
-          output.stroke()
-        }
+      for (const glint of getStalkEyeGlints(phase)) {
+        output.save()
+        output.fillStyle = glint.color
+        output.globalAlpha = glint.alpha * .25
+        output.shadowColor = glint.color
+        output.shadowBlur = 7
+        paintDiamond(output, {
+          ...glint,
+          horizontalRadius: glint.horizontalRadius + 2.5,
+          verticalRadius: glint.verticalRadius + 3,
+        })
+        output.globalAlpha = glint.alpha
+        output.shadowBlur = 2
+        paintDiamond(output, glint)
+        output.restore()
       }
       return true
     }
