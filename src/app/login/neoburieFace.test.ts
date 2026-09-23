@@ -51,6 +51,7 @@ describe("stalk eye glints", () => {
     for (let index = 0; index < glints.length; index++) {
       const glint = glints[index]
       const eye = STALK_EYES[index]
+      expect(glint.clip).toEqual(eye)
       expect(glint.verticalRadius).toBeGreaterThan(glint.horizontalRadius)
       expect(glint.verticalRadius).toBeGreaterThanOrEqual(eye.ry * .5)
       expect(glint.horizontalRadius).toBeGreaterThanOrEqual(eye.rx * .3)
@@ -80,6 +81,7 @@ describe("stalk eye glints", () => {
     expect(covers).toHaveLength(2)
     covers.forEach((cover, index) => {
       const eye = STALK_EYES[index]
+      expect(cover.clip).toEqual(eye)
       const oldHighlight = { x: eye.cx + 6, y: eye.cy - 11 }
       expect(((oldHighlight.x - cover.cx) / cover.rx) ** 2 + ((oldHighlight.y - cover.cy) / cover.ry) ** 2).toBeLessThan(1)
       expect(cover.color).toBe("#0b1511")
