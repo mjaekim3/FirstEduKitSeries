@@ -3,7 +3,7 @@ import { CAT_TIMING, poseTimeline, type CareMode, type Pose } from "./neoburieTi
 type Frame = { x: number; y: number; width: number; height: number; area: number }
 type Sheet = { image: HTMLImageElement; frames?: Frame[] }
 // Rest and wake share one fixed scale in the 543 × 724 walking-frame coordinates.
-const SHEET_SCALE = { rest: 1.16, groom: 1.16, jump: 1.08, wake: 1.16 }
+const SHEET_SCALE = { rest: 1.16, groom: 1.16, wake: 1.16 }
 
 // Find complete sprites rather than cutting a paw at a nominal grid boundary.
 function measureFrames(image: HTMLImageElement): Frame[] {
@@ -40,14 +40,14 @@ function measureFrames(image: HTMLImageElement): Frame[] {
 }
 
 export function createCarePainter(canvas: HTMLCanvasElement) {
-  const paths = { rest: "/neoburie-rest-v4.png", groom: "/neoburie-groom-v4.png", jump: "/neoburie-jump-v4.png", wake: "/neoburie-wake-v4.png", yawnHalf: "/neoburie-yawn-seated-half-v2.png", yawnOpen: "/neoburie-yawn-seated-open-v2.png", idle: "/neoburie-pixel-idle.png", walk: "/neoburie-pixel-walk-v3.png", sleep: "/neoburie-pixel-sleep-v2.png" }
+  const paths = { rest: "/neoburie-rest-v4.png", groom: "/neoburie-groom-v4.png", jump: "/neoburie-jump-v5.png", wake: "/neoburie-wake-v4.png", yawnHalf: "/neoburie-yawn-seated-half-v2.png", yawnOpen: "/neoburie-yawn-seated-open-v2.png", idle: "/neoburie-pixel-idle.png", walk: "/neoburie-pixel-walk-v3.png", sleep: "/neoburie-pixel-sleep-v2.png" }
   const sheets = Object.fromEntries(Object.entries(paths).map(([key, src]) => { const image = new Image(); image.src = src; return [key, { image }] })) as Record<Pose["sheet"], Sheet>
   const context = canvas.getContext("2d")!
   let ready = false
   return (mode: CareMode, _time: number, phase: number) => {
     if (!ready) {
       if (Object.values(sheets).some(({ image }) => !image.complete || !image.naturalWidth)) return false
-      for (const name of ["rest", "groom", "jump", "wake"] as const) {
+      for (const name of ["rest", "groom", "wake"] as const) {
         sheets[name].frames = measureFrames(sheets[name].image)
         if (sheets[name].frames!.length !== 6) return false
       }
@@ -69,7 +69,7 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
     const draw = (pose: Pose, opacity: number) => {
       const sheet = sheets[pose.sheet]
       context.save(); context.globalAlpha = opacity
-      if (pose.sheet === "idle" || pose.sheet === "walk" || pose.sheet === "sleep") {
+      if (pose.sheet === "idle" || pose.sheet === "walk" || pose.sheet === "sleep" || pose.sheet === "jump") {
         // Exact originals at both ends of the sleep/wake sequence.
         context.translate(271.5, ground); context.scale(pose.mirror ? -1 : 1, 1)
         const baseline = pose.sheet === "sleep" ? 571 : 610

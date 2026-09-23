@@ -83,3 +83,9 @@ it("keeps pursuing a moving cursor and catches only after it stops", () => {
   expect(history.some(mode => mode.includes("is-pounce"))).toBe(true)
   expect(history.some(mode => mode.includes("is-land"))).toBe(true)
 })
+it("uses a paw swat instead of hunting when the cursor is close", () => {
+  move(260, 220)
+  expect(cat.classList.contains("is-swat")).toBe(true)
+  advance(1300)
+  expect(cat.classList.contains("is-walk")).toBe(true)
+})

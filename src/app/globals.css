@@ -34,6 +34,7 @@ body {
 }
 
 .login-cat.is-hunt,
+.login-cat.is-swat,
 .login-cat.is-pounce {
   pointer-events: none;
 }
@@ -200,10 +201,8 @@ body {
   animation: cat-zzz 2200ms ease-out infinite;
 }
 
-.login-cat-dizzy-birds,
-.login-cat-pounce-claws { position: absolute; display: none; pointer-events: none; }
-.login-cat.is-dizzy .login-cat-dizzy-birds,
-.login-cat.is-pounce .login-cat-pounce-claws { display: block; }
+.login-cat-dizzy-birds { position: absolute; display: none; pointer-events: none; }
+.login-cat.is-dizzy .login-cat-dizzy-birds { display: block; }
 
 .login-cat-dizzy-birds {
   left: 60%;
@@ -224,20 +223,6 @@ body {
 .login-cat-dizzy-birds span:nth-child(1) { left: 38px; top: -4px; }
 .login-cat-dizzy-birds span:nth-child(2) { left: 1px; top: 23px; }
 .login-cat-dizzy-birds span:nth-child(3) { right: 1px; top: 23px; }
-
-.login-cat-pounce-claws {
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  fill: #fffdf1;
-  stroke: #dca96d;
-  stroke-width: .8;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 2px #fff0bf);
-  transform-origin: 85% 62%;
-  animation: cat-claw-swipe 700ms ease-out 1 both;
-}
 
 .login-bird-wings {
   transform-origin: 16px 16px;
@@ -277,13 +262,6 @@ body {
 @keyframes cat-dizzy-sway {
   from { transform: rotate(-5deg); }
   to { transform: rotate(4deg); }
-}
-
-@keyframes cat-claw-swipe {
-  0%, 43% { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate(4px, -6px); }
-  47% { opacity: 1; clip-path: inset(0); transform: translate(0, 0); }
-  53% { opacity: 1; clip-path: inset(0); transform: translate(-2px, 3px); }
-  65%, 100% { opacity: 0; clip-path: inset(65% 0 0 0); transform: translate(-8px, 10px); }
 }
 
 @keyframes cat-birds-orbit {

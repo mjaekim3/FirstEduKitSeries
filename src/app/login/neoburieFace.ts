@@ -14,11 +14,13 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   const sourceContext = source.getContext("2d", { willReadFrequently: true })!
   const held = new Image()
   const stalk = new Image()
+  const swat = new Image()
   held.src = "/neoburie-pixel-held.png"
-  stalk.src = "/neoburie-stalk-v5.png"
+  stalk.src = "/neoburie-stalk-v14.png"
+  swat.src = "/neoburie-swat-v4.png"
   let pixels: ImageData | undefined
 
-  return (mode: "stalk" | "pounce" | "land" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0) => {
+  return (mode: "stalk" | "swat" | "pounce" | "land" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, _focus: number, _lookX: number, _lookY: number, phase = 0) => {
     context.clearRect(0, 0, 543, 724)
     output.clearRect(0, 0, 543, 724)
     canvas.style.transformOrigin = ""
@@ -26,42 +28,38 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
     if (!mode) return false
     if (mode === "stalk") {
       if (!stalk.complete || !stalk.naturalWidth) return false
-      // These are separately drawn crouching poses. Reverse the second half
-      // so the hips sway back without deforming the body or snapping at loop end.
-      const sequence = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1]
-      const frame = sequence[Math.min(sequence.length - 1, Math.floor(phase * sequence.length))]
+      // The artwork alternates the rear-foot load while pupil size increases
+      // monotonically from frame 0 to frame 5. Never reverse this sequence.
+      const frame = Math.min(5, Math.floor(Math.max(0, phase) * 6))
       output.drawImage(stalk, frame * 543, 0, 543, 724, 0, 0, 543, 724)
-      for (const [cx, cy] of [[421, 456], [492, 455]]) {
-        if (focus > 0) {
-          output.save()
-          output.globalAlpha = focus * .82
+      if (frame >= 4) {
+        const pulse = .72 + Math.sin(time / 90) * .28
+        for (const [cx, cy, radius] of [[418, 494, 13], [489, 492, 15]] as const) {
+          const r = radius * pulse
           output.beginPath()
-          output.ellipse(cx + lookX, cy + lookY, 5 + focus * 4, 7 + focus * 5, 0, 0, Math.PI * 2)
-          output.fillStyle = "#18272a"
-          output.fill()
-          output.beginPath()
-          output.ellipse(cx - 4 + lookX, cy - 5 + lookY, 2, 2.5, 0, 0, Math.PI * 2)
-          output.fillStyle = "#fffdf5"
-          output.fill()
-          output.restore()
-        }
-        if (phase > .62) {
-          const sparkle = Math.sin(time / 135) ** 2 * Math.min(1, (phase - .62) / .18)
-          const r = 2 + sparkle * 4
-          output.beginPath()
-          output.moveTo(cx - 4, cy - 6 - r)
-          output.lineTo(cx - 1, cy - 9)
-          output.lineTo(cx - 4 + r, cy - 6)
-          output.lineTo(cx - 1, cy - 3)
-          output.lineTo(cx - 4, cy - 6 + r)
-          output.lineTo(cx - 7, cy - 3)
-          output.lineTo(cx - 4 - r, cy - 6)
-          output.lineTo(cx - 7, cy - 9)
+          output.moveTo(cx, cy - r)
+          output.lineTo(cx + 2.4, cy - 2.4)
+          output.lineTo(cx + r, cy)
+          output.lineTo(cx + 2.4, cy + 2.4)
+          output.lineTo(cx, cy + r)
+          output.lineTo(cx - 2.4, cy + 2.4)
+          output.lineTo(cx - r, cy)
+          output.lineTo(cx - 2.4, cy - 2.4)
           output.closePath()
-          output.fillStyle = "#fffce5"
+          output.fillStyle = "#ffffff"
           output.fill()
+          output.strokeStyle = "#f2b940"
+          output.lineWidth = 4
+          output.stroke()
         }
       }
+      return true
+    }
+    if (mode === "swat") {
+      if (!swat.complete || !swat.naturalWidth) return false
+      // Slow lift, an inquisitive hold, then two quick taps.
+      const frame = phase < .2 ? 0 : phase < .44 ? 1 : phase < .72 ? 2 : phase < .8 ? 3 : phase < .92 ? 4 : 5
+      output.drawImage(swat, frame * 543, 0, 543, 724, 0, 0, 543, 724)
       return true
     }
     if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") {
