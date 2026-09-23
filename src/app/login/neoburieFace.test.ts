@@ -48,7 +48,7 @@ describe("stalk eye glints", () => {
       .raw()
       .toBuffer({ resolveWithObject: true })
     const patches = [
-      { left: 350, top: 445, width: 50, height: 82 },
+      { left: 320, top: 445, width: 80, height: 82 },
       { left: 510, top: 445, width: 33, height: 82 },
     ]
 
