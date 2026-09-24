@@ -30,6 +30,28 @@ describe("held and dizzy artwork", () => {
     expect(heldFrameAt(540)).toBe(0)
   })
 
+  it("keeps the held cat at its natural width instead of squeezing the source cell", async () => {
+    const { data, info } = await sharp(path.join(process.cwd(), "public", HELD_SHEET_PATH.slice(1)))
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+
+    for (let frame = 0; frame < HELD_FRAME_COUNT; frame++) {
+      let minX = 543
+      let maxX = 0
+      let minY = 724
+      let maxY = 0
+      for (let y = 0; y < 724; y++) for (let x = 0; x < 543; x++) {
+        if (data[(y * info.width + frame * 543 + x) * info.channels + 3] <= 40) continue
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+      }
+      expect((maxX - minX + 1) / (maxY - minY + 1)).toBeGreaterThan(.48)
+    }
+  })
+
   it("cycles every dizzy frame so the rolling pupils and overhead birds move together", () => {
     expect([0, 150, 300, 450, 600, 750, 900, 1050].map(dizzyFrameAt))
       .toEqual([0, 1, 2, 3, 4, 5, 6, 7])
