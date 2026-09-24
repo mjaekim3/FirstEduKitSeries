@@ -76,7 +76,9 @@ it("completes the waking sequence before responding with a chase", () => {
 it("keeps pursuing a moving cursor and catches only after it stops", () => {
   move(600, 300); advance(1800)
   expect(cat.classList.contains("is-stalk")).toBe(true)
-  advance(450)
+  advance(900)
+  expect(cat.classList.contains("is-stalk")).toBe(true)
+  advance(550)
   expect(cat.classList.contains("is-hunt")).toBe(true)
   history.length = 0
   for (let i = 0; i < 45; i++) { move(600 + Math.sin(i / 5) * 180, 300 + Math.cos(i / 5) * 40); advance(100) }

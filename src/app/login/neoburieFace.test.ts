@@ -173,11 +173,11 @@ describe("stalk eye glints", () => {
     }
   })
 
-  it("replaces the pupil only at the end of the hunting pose", () => {
-    expect(getStalkEyeGlints(.75)).toEqual([])
+  it("builds and holds the eye shine before the cat jumps", () => {
+    expect(getStalkEyeGlints(.59)).toEqual([])
 
-    const entering = getStalkEyeGlints(.8)
-    const flash = getStalkEyeGlints(.94)
+    const entering = getStalkEyeGlints(.64)
+    const flash = getStalkEyeGlints(.86)
     const held = getStalkEyeGlints(1)
     expect(entering).toHaveLength(2)
     expect(held[0].verticalRadius).toBeCloseTo(flash[0].verticalRadius)
@@ -187,9 +187,9 @@ describe("stalk eye glints", () => {
   })
 
   it("covers the original off-center highlight before drawing one replacement pupil", () => {
-    expect(getStalkPupilCovers(.75, 0, 0)).toEqual([])
+    expect(getStalkPupilCovers(.59, 0, 0)).toEqual([])
 
-    const covers = getStalkPupilCovers(.9, 0, 0)
+    const covers = getStalkPupilCovers(.64, 0, 0)
     expect(covers).toHaveLength(2)
     covers.forEach((cover, index) => {
       const eye = STALK_EYES[index]
