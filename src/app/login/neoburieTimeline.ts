@@ -1,4 +1,4 @@
-export const CAT_TIMING = { settle: 6900, wake: 5300, groom: 6200, jump: 940, land: 280, stalk: 2200, swat: 1250 } as const
+export const CAT_TIMING = { settle: 6900, wake: 5300, groom: 6200, jump: 940, land: 280, stalk: 3200, swat: 1250 } as const
 
 export type CareMode = "settle" | "wake" | "groom" | "pounce" | "land"
 export type Pose = { sheet: "rest" | "groom" | "jump" | "wake" | "yawnHalf" | "yawnOpen" | "sleep" | "idle" | "walk"; frame: number; mirror?: boolean }

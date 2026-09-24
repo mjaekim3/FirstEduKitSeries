@@ -302,7 +302,7 @@ export default function Neoburie() {
         if (time >= stalkUntil) {
           huntStart = time
           setMode("hunt")
-        } else if (time - cursorMovedAt > 2200) {
+        } else if (time - cursorMovedAt > CAT_TIMING.stalk + 500) {
           chooseTarget(); setMode("walk")
           huntCooldown = time + 1400
         }
