@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { encrypt, decrypt } from "@/lib/crypto";
 
-const SB_URL = process.env.SUPABASE_URL!;
+const SB_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)!;
 const SB_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function sbHeaders() {

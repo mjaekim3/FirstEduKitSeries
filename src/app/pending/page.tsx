@@ -7,9 +7,10 @@ export default function PendingPage() {
         <div className="text-3xl">⏳</div>
         <h1 className="text-lg font-bold text-gray-800">승인 대기 중</h1>
         <p className="text-gray-500 text-sm leading-relaxed">
-          가입 신청이 접수되었습니다.<br />
-          관리자 승인 후 이용하실 수 있습니다.
+          WLPE는 HIFS 교직원 전용입니다.<br />
+          관리자 승인 후 이용하실 수 있습니다. 다른 앱은 바로 사용 가능해요.
         </p>
+        <a href="/" className="block text-sm text-emerald-700 hover:underline">홈으로 돌아가기</a>
         <form action={async () => {
           "use server"
           await signOut({ redirectTo: "/login" })

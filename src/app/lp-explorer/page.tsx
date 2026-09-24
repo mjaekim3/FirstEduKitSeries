@@ -49,23 +49,7 @@ type Activity = {
   description: string; steps: string[]; scoring: string; source: string;
 };
 
-const SEED: Activity[] = [
-  { id: "act_001", name: "딱지치기", slot: "메인", default_minutes: 15, teks_subcategory: "Manipulative",
-    tags: ["한국전통놀이", "손기술", "순환형"], equipment: ["딱지"],
-    description: "완성된 딱지로 자유 순환, 짝 바꿔가며 계속 움직이게 진행", steps: [], scoring: "", source: "" },
-  { id: "act_002", name: "사방치기", slot: "메인", default_minutes: 15, teks_subcategory: "Locomotor",
-    tags: ["한국전통놀이", "점프", "스테이션형"], equipment: ["바닥테이프"],
-    description: "칸 그려진 곳에서 순서대로, 스테이션 여러 개로 대기 없이 진행", steps: [], scoring: "", source: "" },
-  { id: "act_003", name: "한국 전통팽이 돌리기", slot: "메인", default_minutes: 15, teks_subcategory: "Manipulative",
-    tags: ["한국전통놀이", "손목", "개인연습"], equipment: ["전통팽이", "팽이채"],
-    description: "손으로 돌리기 → 채로 유지하기, 개인차 크므로 연습 시간 넉넉히", steps: [], scoring: "", source: "" },
-  { id: "act_004", name: "투호 (폴리스팟 3단계)", slot: "메인", default_minutes: 15, teks_subcategory: "Manipulative",
-    tags: ["한국전통놀이", "던지기", "단계형", "스테이션형"], equipment: ["폴리스팟", "콩주머니", "콘"],
-    description: "가까이/중간/멀리 3단계 배치, 30초 안에 득점 많이 하기", steps: [], scoring: "", source: "" },
-  { id: "act_005", name: "한국 고무줄놀이 (밴드형 티니클링)", slot: "메인", default_minutes: 15, teks_subcategory: "Non-locomotor",
-    tags: ["한국전통놀이", "리듬", "단계형"], equipment: ["티니클링밴드"],
-    description: "발목→무릎→허벅지→허리 단계별, 넘기/감기 동작", steps: [], scoring: "", source: "" },
-];
+const SEED: Activity[] = [];
 
 type Config = { apiKey: string; defaultEffort: string; standard: string; formUrl: string; formEntry: string };
 const DEFAULT_CONFIG: Config = { apiKey: "", defaultEffort: "자세히", standard: "TEKS (Texas)", formUrl: "", formEntry: "" };
@@ -88,7 +72,10 @@ const btnSecondary = "bg-[#24382d] border border-[#33493c] text-[#eef3ef] rounde
 const tagChip = "inline-block bg-[#24382d] text-[#c9a15a] border border-[#33493c] rounded-full px-2 py-0.5 text-[11px] mr-1 mb-1";
 
 export default function LPExplorerPage() {
-  const [activities, setActivities] = useLocalStorage<Activity[]>("lpx_activities", SEED);
+  const [activities, setActivities] = useState<Activity[]>(SEED);
+  const saveAct = (a: Activity) => fetch("/api/lp-explorer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(a) })
+    .then((r) => { if (!r.ok) toast("서버 저장 실패"); }).catch(() => toast("서버 저장 실패"));
+  const addAct = (a: Activity) => { setActivities((prev) => [...prev, a]); saveAct(a); };
   const [cfg, setCfg] = useLocalStorage<Config>("lpx_config", DEFAULT_CONFIG);
   const [tab, setTab] = useState<"db" | "wizard" | "record" | "community" | "settings">("db");
   const [toastMsg, setToastMsg] = useState("");
@@ -100,6 +87,7 @@ export default function LPExplorerPage() {
     fetch("/api/lp-explorer/me").then((r) => r.json()).then((d) => {
       setUserEmail(d.email);
       if (d.email) {
+        fetch("/api/lp-explorer?mine=1").then((r) => r.json()).then((rows) => { if (Array.isArray(rows)) setActivities(rows); }).catch(() => {});
         fetch("/api/lp-explorer/settings").then((r) => r.json()).then((s) => {
           setCfg((prev) => ({ ...prev, apiKey: s.apiKey, defaultEffort: s.defaultEffort, standard: s.standard }));
         }).catch(() => {});
@@ -118,7 +106,11 @@ export default function LPExplorerPage() {
   const selected = activities.find((a) => a.id === selectedId) || null;
 
   function attachTag(activityId: string, tag: string) {
-    setActivities((prev) => prev.map((a) => (a.id === activityId && !a.tags.includes(tag) ? { ...a, tags: [...a.tags, tag] } : a)));
+    const t = activities.find((a) => a.id === activityId);
+    if (!t || t.tags.includes(tag)) return;
+    const u = { ...t, tags: [...t.tags, tag] };
+    setActivities((prev) => prev.map((a) => (a.id === activityId ? u : a)));
+    saveAct(u);
     toast(`'${tag}' 태그가 부착되었습니다`);
   }
 
@@ -127,7 +119,7 @@ export default function LPExplorerPage() {
       <header className="px-6 py-4 border-b border-[#33493c] flex items-center justify-between">
         <div>
           <h1 className="text-[17px] font-semibold tracking-tight">Lesson Plan Explorer</h1>
-          <div className="text-[12px] text-[#9fb3a7] mt-0.5">개인 데이터는 브라우저에, 공개 활동만 서버에 저장됩니다</div>
+          <div className="text-[12px] text-[#9fb3a7] mt-0.5">내 활동은 계정에 저장되어 어디서나 불러옵니다</div>
         </div>
         <div className="text-[12px] text-[#9fb3a7]">
           {userEmail ? (
@@ -166,7 +158,7 @@ export default function LPExplorerPage() {
             selected={selected}
             onSelect={setSelectedId}
             onDropTag={(id, tag) => attachTag(id, tag)}
-            onDelete={(id) => { setActivities((prev) => prev.filter((a) => a.id !== id)); setSelectedId(null); toast("삭제되었습니다."); }}
+            onDelete={(id) => { setActivities((prev) => prev.filter((a) => a.id !== id)); fetch(`/api/lp-explorer?id=${encodeURIComponent(id)}`, { method: "DELETE" }); setSelectedId(null); toast("삭제되었습니다."); }}
           />
         )}
         {tab === "wizard" && <WizardView activities={activities} allTags={allTags} />}
@@ -175,11 +167,11 @@ export default function LPExplorerPage() {
             cfg={cfg}
             subcats={subcats}
             userEmail={userEmail}
-            onRegister={(a) => { setActivities((prev) => [...prev, a]); toast(`'${a.name}' 활동이 등록되었습니다.`); }}
+            onRegister={(a) => { addAct(a); toast(`'${a.name}' 활동이 등록되었습니다.`); }}
             toast={toast}
           />
         )}
-        {tab === "community" && <CommunityView toast={toast} userEmail={userEmail} onImport={(a) => { setActivities((prev) => [...prev, { ...a, id: "act_" + Date.now() }]); toast(`'${a.name}' 활동을 내 목록에 추가했습니다.`); }} />}
+        {tab === "community" && <CommunityView toast={toast} userEmail={userEmail} onImport={(a) => { addAct({ ...a, id: "act_" + Date.now() }); toast(`'${a.name}' 활동을 내 목록에 추가했습니다.`); }} />}
         {tab === "settings" && (
           <SettingsView
             cfg={cfg}

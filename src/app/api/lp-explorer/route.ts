@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { randomUUID } from "node:crypto";
 
-const SB_URL = process.env.SUPABASE_URL!;
+const SB_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)!;
 const SB_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function sbHeaders() {
@@ -13,16 +13,16 @@ function sbHeaders() {
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   const email = session?.user?.email;
-
-  const resp = await fetch(`${SB_URL}/rest/v1/activities?select=*`, { headers: sbHeaders() });
+  if (!email) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  const mine = new URL(req.url).searchParams.get("mine");
+  const e = encodeURIComponent(email);
+  const filter = mine ? `owner_email=eq.${e}` : `or=(is_public.eq.true,owner_email.eq.${e})`;
+  const resp = await fetch(`${SB_URL}/rest/v1/activities?select=*&${filter}`, { headers: sbHeaders() });
   if (!resp.ok) return NextResponse.json({ error: await resp.text() }, { status: 500 });
-  const all = await resp.json();
-
-  const visible = all.filter((a: any) => a.is_public || (email && a.owner_email === email));
-  return NextResponse.json(visible);
+  return NextResponse.json(await resp.json());
 }
 
 export async function POST(req: NextRequest) {
@@ -35,8 +35,13 @@ export async function POST(req: NextRequest) {
     if (!email) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
     const body = await req.json();
+    if (body.id) {
+      const chk = await fetch(`${SB_URL}/rest/v1/activities?select=owner_email&id=eq.${encodeURIComponent(body.id)}`, { headers: sbHeaders() });
+      const rows = chk.ok ? await chk.json() : [];
+      if (rows[0] && rows[0].owner_email !== email) return NextResponse.json({ error: "본인 활동만 수정할 수 있습니다." }, { status: 403 });
+    }
     const row = {
-      id: `act_${randomUUID()}`,
+      id: body.id || `act_${randomUUID()}`,
       name: body.name,
       slot: body.slot,
       default_minutes: body.default_minutes,
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     const resp = await fetch(`${SB_URL}/rest/v1/activities`, {
       method: "POST",
-      headers: sbHeaders(),
+      headers: { ...sbHeaders(), Prefer: "resolution=merge-duplicates" },
       body: JSON.stringify([row]),
     });
     if (!resp.ok) {
