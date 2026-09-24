@@ -6,7 +6,7 @@ import Neoburie from "./Neoburie"
 
 vi.mock("./neoburieFace", () => ({
   createFacePainter: () => () => false,
-  HELD_SHEET_PATH: "/neoburie-held-v3-hand-4f.png",
+  HELD_SHEET_PATH: "/neoburie-held-v4-hand-4f.png",
 }))
 let now = 0
 let nextId = 0
@@ -104,7 +104,7 @@ it("normalizes active pose sizes against the yawn and sleep artwork", () => {
 })
 
 it("uses the redrawn held artwork and does not layer emoji birds over dizzy frames", () => {
-  expect(cat.style.getPropertyValue("--held-sprite")).toContain("neoburie-held-v3-hand-4f.png")
+  expect(cat.style.getPropertyValue("--held-sprite")).toContain("neoburie-held-v4-hand-4f.png")
   expect(cat.querySelector(".login-cat-dizzy-birds")).toBeNull()
   expect(cat.textContent).not.toMatch(/[🐤🐦]/u)
 })
