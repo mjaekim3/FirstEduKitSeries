@@ -4,6 +4,12 @@ type Frame = { x: number; y: number; width: number; height: number; area: number
 type Sheet = { image: HTMLImageElement; frames?: Frame[] }
 // Rest and wake share one fixed scale in the 543 × 724 walking-frame coordinates.
 const SHEET_SCALE = { rest: 1.16, groom: 1.16, jump: 1.08, wake: 1.45 }
+// Walking renders at --cat-art-scale 1.08; frames borrowed from the walk and
+// idle sheets must match it whatever the current mode's art scale is.
+const WALK_ART_SCALE = 1.08
+// The last wake frames measure 4.2% larger than walking (iris size), so the
+// stretch eases down to walking size by its final frame.
+const WAKE_END_SCALE = 1 / 1.042
 export const JUMP_SHEET_PATH = "/neoburie-jump-v4-clean.png"
 export const MEASURED_FRAME_SHEETS = ["rest", "groom", "jump", "wake"] as const
 export const FRAME_COUNTS = { rest: 6, groom: 6, jump: 6, wake: 12 } as const
@@ -59,7 +65,7 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
   const sheets = Object.fromEntries(Object.entries(paths).map(([key, src]) => { const image = new Image(); image.src = src; return [key, { image }] })) as Record<Pose["sheet"], Sheet>
   const context = canvas.getContext("2d")!
   let ready = false
-  return (mode: CareMode, _time: number, phase: number) => {
+  return (mode: CareMode, _time: number, phase: number, artScale = 1) => {
     if (!ready) {
       if (Object.values(sheets).some(({ image }) => !image.complete || !image.naturalWidth)) return false
       for (const name of MEASURED_FRAME_SHEETS) {
@@ -86,7 +92,8 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
       context.save(); context.globalAlpha = opacity
       if (pose.sheet === "idle" || pose.sheet === "walk" || pose.sheet === "sleep") {
         // Exact originals at both ends of the sleep/wake sequence.
-        context.translate(271.5, ground); context.scale(pose.mirror ? -1 : 1, 1)
+        const match = (pose.sheet === "sleep" ? 1 : WALK_ART_SCALE) / artScale
+        context.translate(271.5, ground); context.scale((pose.mirror ? -1 : 1) * match, match)
         const baseline = pose.sheet === "sleep" ? 571 : 610
         context.drawImage(sheet.image, pose.frame * 543, 0, 543, 724, -271.5, -baseline, 543, 724)
       } else if (pose.sheet === "yawnHalf" || pose.sheet === "yawnOpen") {
@@ -98,7 +105,8 @@ export function createCarePainter(canvas: HTMLCanvasElement) {
         context.drawImage(sheet.image, -638 * scale, -1187 * scale, sheet.image.naturalWidth * scale, sheet.image.naturalHeight * scale)
       } else {
         const frame = sheet.frames![pose.frame]
-        const scale = SHEET_SCALE[pose.sheet] * 1536 / sheet.image.naturalWidth
+        const taper = pose.sheet === "wake" ? 1 + (WAKE_END_SCALE - 1) * pose.frame / (FRAME_COUNTS.wake - 1) : 1
+        const scale = SHEET_SCALE[pose.sheet] * taper * 1536 / sheet.image.naturalWidth
         context.translate(271.5, ground)
         context.scale(pose.mirror ? -1 : 1, 1)
         context.drawImage(sheet.image, frame.x, frame.y, frame.width, frame.height, -frame.width * scale / 2, -frame.height * scale, frame.width * scale, frame.height * scale)

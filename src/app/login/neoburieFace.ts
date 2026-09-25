@@ -38,7 +38,7 @@ export const STALK_FACE_SPARKLE_MASKS: readonly StalkEyeRegion[] = [
   { cx: 529, cy: 486, rx: 14, ry: 30 },
 ]
 export const STALK_SHEET_PATH = "/neoburie-stalk-v15-clean.png"
-export const HELD_SHEET_PATH = "/neoburie-held-v4-hand-4f.png"
+export const HELD_SHEET_PATH = "/neoburie-held-v5-hand-4f.png"
 export const DIZZY_SHEET_PATH = "/neoburie-dizzy-v10-held-rotating-spirals-8f.png"
 export const HELD_FRAME_COUNT = 4
 export const DIZZY_FRAME_COUNT = 8
@@ -197,7 +197,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
   swat.src = "/neoburie-swat-v4.png"
   let stalkPixels: ImageData | undefined
 
-  return (mode: "stalk" | "swat" | "pounce" | "land" | "held" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0) => {
+  return (mode: "stalk" | "swat" | "pounce" | "land" | "held" | "dizzy" | "wake" | "groom" | "settle" | null, time: number, focus: number, lookX: number, lookY: number, phase = 0, artScale = 1) => {
     output.clearRect(0, 0, 543, 724)
     canvas.style.transformOrigin = ""
     canvas.dataset.atlas = "false"
@@ -243,7 +243,7 @@ export function createFacePainter(canvas: HTMLCanvasElement) {
       return true
     }
     if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") {
-      if (paintCare(mode, time, phase)) return true
+      if (paintCare(mode, time, phase, artScale)) return true
       if (mode === "wake" || mode === "groom" || mode === "pounce" || mode === "settle" || mode === "land") return false
     }
     if (mode === "held") {

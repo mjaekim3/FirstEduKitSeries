@@ -12,7 +12,9 @@ const CAT_ART_SCALE: Record<CatMode, number> = {
   sleep: 1, settle: 1, wake: 1, groom: 1,
   stalk: 1.08, swat: 1.04,
   pounce: 1.16, land: 1.16,
-  held: .93, dizzy: 1.04, drop: .93,
+  // The dizzy sheet is drawn in the held frame (same hand grip), and it is
+  // first shown while still held, so it keeps the held scale on release.
+  held: .93, dizzy: .93, drop: .93,
 }
 
 export default function Neoburie() {
@@ -364,7 +366,7 @@ export default function Neoburie() {
       const faceMode = cat.classList.contains("is-dizzy") ? "dizzy" : mode === "held" || mode === "stalk" || mode === "swat" || mode === "pounce" || mode === "land" || mode === "wake" || mode === "groom" || mode === "settle" ? mode : null
       const stalkPhase = Math.max(0, Math.min(1, (time - stalkUntil + CAT_TIMING.stalk) / CAT_TIMING.stalk))
       const focus = Math.max(0, Math.min(1, (stalkPhase - .12) / .38))
-      const painted = paintFace(faceMode, reducedMotion ? 0 : time, focus * focus * (3 - 2 * focus), lookX, lookY, mode === "wake" || mode === "groom" || mode === "settle" || mode === "land" ? (time - careStart) / CAT_TIMING[mode] : mode === "stalk" ? stalkPhase : mode === "swat" ? Math.min(1, (time - swatStart) / CAT_TIMING.swat) : Math.min(1, (time - pounceStart) / CAT_TIMING.jump))
+      const painted = paintFace(faceMode, reducedMotion ? 0 : time, focus * focus * (3 - 2 * focus), lookX, lookY, mode === "wake" || mode === "groom" || mode === "settle" || mode === "land" ? (time - careStart) / CAT_TIMING[mode] : mode === "stalk" ? stalkPhase : mode === "swat" ? Math.min(1, (time - swatStart) / CAT_TIMING.swat) : Math.min(1, (time - pounceStart) / CAT_TIMING.jump), CAT_ART_SCALE[mode])
       cat.classList.toggle("has-painted-pose", painted)
       cat.classList.toggle("uses-atlas", painted && face.dataset.atlas === "true")
       frame = requestAnimationFrame(roam)
